@@ -274,6 +274,10 @@ td.truncate{max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ell
     <div class="sidebar">
       <div class="nav-section">
         <div class="nav-label">Principal</div>
+        <button class="nav-item" onclick="goPage('dashboard')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </button>
         <button class="nav-item active" onclick="goPage('ocorrencias')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           Ocorrências
@@ -295,6 +299,34 @@ td.truncate{max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ell
 
     <!-- MAIN CONTENT -->
     <div class="main">
+
+      <!-- ── DASHBOARD PAGE ── -->
+      <div class="page" id="page-dashboard">
+        <div class="page-header">
+          <div class="page-title">Dashboard</div>
+        </div>
+        <div class="stats-grid" style="margin-bottom:20px">
+          <div class="stat"><div class="stat-label">Total de Ocorrências</div><div class="stat-val" id="dsTotal">—</div></div>
+          <div class="stat"><div class="stat-label">Abertas</div><div class="stat-val" id="dsAberto" style="color:var(--wp-blue)">—</div></div>
+          <div class="stat"><div class="stat-label">Em Andamento</div><div class="stat-val" id="dsAndamento" style="color:var(--amber)">—</div></div>
+          <div class="stat"><div class="stat-label">Críticas</div><div class="stat-val" id="dsCrit" style="color:var(--red)">—</div></div>
+          <div class="stat"><div class="stat-label">Resolvidas</div><div class="stat-val" id="dsResolvido" style="color:var(--green)">—</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+          <div class="table-card" style="padding:20px">
+            <div style="font-weight:600;font-size:13px;margin-bottom:14px;color:var(--text)">Ocorrências por Status</div>
+            <div id="dsChartStatus"></div>
+          </div>
+          <div class="table-card" style="padding:20px">
+            <div style="font-weight:600;font-size:13px;margin-bottom:14px;color:var(--text)">Ocorrências por Criticidade</div>
+            <div id="dsChartCrit"></div>
+          </div>
+        </div>
+        <div class="table-card" style="padding:20px">
+          <div style="font-weight:600;font-size:13px;margin-bottom:14px;color:var(--text)">Top 5 Ruas com mais Ocorrências</div>
+          <div id="dsChartRuas"></div>
+        </div>
+      </div>
 
       <!-- ── OCORRÊNCIAS PAGE ── -->
       <div class="page active" id="page-ocorrencias">
@@ -577,7 +609,7 @@ td.truncate{max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ell
    CONFIG SUPABASE
 ══════════════════════════════════════════════ */
 const SUPABASE_URL = 'https://urtdlwzmrylacocqesxo.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVydGRsd3ptcnlsYWNvY3Flc3hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NjgzODcsImV4cCI6MjA5NjI0NDM4N30.Rm28rb9XS4a64O6kxxb-eiL31sniKgQ4o14zsbavkvE';
+const SUPABASE_KEY = 'sb_publishable_fzCbGEYYLIBluYdrlp2Zpw_M97gkmWp';
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -716,13 +748,13 @@ function setupApp(){
 }
 
 function setupLogo(){
-  // Usa a logo enviada pelo usuário (inserida como data-url no elemento)
-  // Como não temos o arquivo diretamente, usamos um fallback elegante
   const logoEl1=$('loginLogo'), logoEl2=$('appLogo');
-  // Se a logo não carregar, os fallbacks de texto serão exibidos (via onerror)
-  // Para usar a logo real, substitua a src abaixo pela URL hospedada
+  // ► PARA TROCAR A LOGO: substitua a URL abaixo pelo link direto da sua imagem
+  // Opção 1 — URL pública (ex: Supabase Storage, Imgur, GitHub):
   const logoSrc='https://urtdlwzmrylacocqesxo.supabase.co/storage/v1/object/public/fotos/logo-worldpost.png';
-  logoEl1.src=logoSrc; logoEl2.src=logoSrc;
+  // Opção 2 — Base64: const logoSrc='data:image/png;base64,SUA_BASE64_AQUI';
+  if(logoEl1) logoEl1.src=logoSrc;
+  if(logoEl2) logoEl2.src=logoSrc;
 }
 
 /* ══════════════════════════════════════════════
@@ -738,6 +770,58 @@ function goPage(page){
   });
   if(page==='usuarios') loadUsers();
   if(page==='ruas') loadRuas();
+  if(page==='dashboard') renderDashboard();
+}
+
+function renderDashboard(){
+  const total=allOcorrencias.length;
+  const aberto=allOcorrencias.filter(r=>r.status==='Aberto').length;
+  const andamento=allOcorrencias.filter(r=>r.status==='Em andamento').length;
+  const crit=allOcorrencias.filter(r=>r.criticidade==='Crítica').length;
+  const resolvido=allOcorrencias.filter(r=>r.status==='Resolvido').length;
+  $('dsTotal').textContent=total;
+  $('dsAberto').textContent=aberto;
+  $('dsAndamento').textContent=andamento;
+  $('dsCrit').textContent=crit;
+  $('dsResolvido').textContent=resolvido;
+
+  function barChart(containerId, items, colorMap){
+    const el=$(containerId); if(!el) return;
+    const max=Math.max(...items.map(i=>i.v),1);
+    el.innerHTML=items.map(i=>{
+      const pct=Math.round((i.v/max)*100);
+      const color=colorMap[i.k]||'var(--wp-blue)';
+      return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+          <span style="color:var(--text2)">${i.k}</span>
+          <strong>${i.v}</strong>
+        </div>
+        <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;transition:width .4s"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const statusColors={'Aberto':'var(--wp-blue)','Em andamento':'var(--amber)','Resolvido':'var(--green)','Cancelado':'var(--gray-lt)'};
+  const critColors={'Crítica':'var(--red)','Alta':'#f97316','Média':'var(--amber)','Baixa':'var(--green)'};
+
+  const statusItems=['Aberto','Em andamento','Resolvido','Cancelado'].map(k=>({
+    k, v:allOcorrencias.filter(r=>r.status===k).length
+  })).filter(i=>i.v>0);
+
+  const critItems=['Crítica','Alta','Média','Baixa'].map(k=>({
+    k, v:allOcorrencias.filter(r=>r.criticidade===k).length
+  })).filter(i=>i.v>0);
+
+  // Top 5 ruas
+  const ruaCount={};
+  allOcorrencias.forEach(r=>{ const n=r.ruas?.nome||r.rua_ocorrencia||'Sem rua'; ruaCount[n]=(ruaCount[n]||0)+1; });
+  const ruaItems=Object.entries(ruaCount).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v).slice(0,5);
+
+  barChart('dsChartStatus', statusItems, statusColors);
+  barChart('dsChartCrit', critItems, critColors);
+  barChart('dsChartRuas', ruaItems, {});
 }
 
 /* ══════════════════════════════════════════════
@@ -1071,6 +1155,10 @@ let newPhotoFile=null;
 
 function openUserModal(uid){
   const u=allUsers.find(x=>x.id===uid); if(!u) return;
+  const isAdmin=currentProfile?.role==='admin';
+  const isSelf=uid===currentUser?.id;
+  // Usuário comum só pode editar o próprio perfil e não pode mudar role
+  if(!isAdmin && !isSelf){ toast('Você não tem permissão para editar outros usuários.','err'); return; }
   editingUserId=uid; newPhotoFile=null;
   $('uEditId').value=uid;
   $('uNome').value=u.nome||'';
@@ -1081,6 +1169,18 @@ function openUserModal(uid){
   $('uRole').value=u.role||'usuario';
   $('uNewPass').value='';
   $('mUserErr').style.display='none'; $('mUserOk').style.display='none';
+  // Bloquear campo de role para não-admins
+  const roleField=$('uRole');
+  const roleWrap=roleField.closest('.form-field');
+  if(!isAdmin){
+    roleField.disabled=true;
+    roleWrap.style.opacity='0.5';
+    roleWrap.title='Apenas administradores podem alterar o nível de acesso';
+  } else {
+    roleField.disabled=false;
+    roleWrap.style.opacity='1';
+    roleWrap.title='';
+  }
   // foto preview
   const ph=$('uPhotoPreview');
   if(u.foto_url){ ph.innerHTML=`<img src="${u.foto_url}" alt="" style="width:100%;height:100%;object-fit:cover">`; }
@@ -1110,10 +1210,14 @@ async function saveUser(){
     const {error:upErr}=await sb.storage.from('fotos').upload(path,newPhotoFile,{upsert:true});
     if(!upErr){ const {data:{publicUrl}}=sb.storage.from('fotos').getPublicUrl(path); foto_url=publicUrl; }
   }
+  const isAdmin=currentProfile?.role==='admin';
+  const originalRole=allUsers.find(x=>x.id===uid)?.role||'usuario';
   const payload={
     nome:v('uNome').trim(),email:v('uEmail').trim()||null,
     matricula:v('uMatricula').trim()||null,turno:v('uTurno')||null,
-    responsavel:v('uResponsavel').trim()||null,role:v('uRole'),foto_url
+    responsavel:v('uResponsavel').trim()||null,
+    role:isAdmin?v('uRole'):originalRole, // apenas admin pode mudar role
+    foto_url
   };
   const {error}=await sb.from('profiles').update(payload).eq('id',uid);
   resetBtn(btn,'Salvar');
