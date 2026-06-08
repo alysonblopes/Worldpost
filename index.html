@@ -647,7 +647,7 @@ td.truncate{max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ell
         <select id="oRua" onchange="autoFillResponsavel()"><option value="">Selecione a rua</option></select>
       </div>
       <div class="grid2">
-        <div class="form-field"><label>Responsável</label><input type="text" id="oResp" placeholder="Preenchido automaticamente"></div>
+        <div class="form-field"><label>Responsável</label><input type="text" id="oResp" placeholder="Selecione uma rua para preencher automaticamente"></div>
         <div class="form-field"><label>Líder Responsável</label><input type="text" id="oLider" placeholder="Nome do líder"></div>
       </div>
       <div class="form-field"><label>Descrição da Ocorrência</label><textarea id="oDescr" placeholder="Descreva detalhadamente..."></textarea></div>
@@ -1123,8 +1123,27 @@ async function deleteRua(id){
 function autoFillResponsavel(){
   const sel=$('oRua');
   const opt=sel.options[sel.selectedIndex];
-  if(opt&&opt.dataset.resp){ $('oResp').value=opt.dataset.resp; }
-  else { $('oResp').value=''; }
+  const respField=$('oResp');
+  if(opt && opt.value && opt.dataset.resp){
+    respField.value=opt.dataset.resp;
+    respField.readOnly=true;
+    respField.style.background='var(--surface2)';
+    respField.style.color='var(--text2)';
+    respField.title='Preenchido automaticamente pela rua/setor';
+  } else if(opt && opt.value && !opt.dataset.resp){
+    // Rua selecionada mas sem responsável cadastrado — libera para digitar
+    respField.value='';
+    respField.readOnly=false;
+    respField.style.background='';
+    respField.style.color='';
+    respField.title='';
+  } else {
+    respField.value='';
+    respField.readOnly=false;
+    respField.style.background='';
+    respField.style.color='';
+    respField.title='';
+  }
 }
 
 /* ══════════════════════════════════════════════
@@ -1198,7 +1217,18 @@ function openOcorrenciaModal(r=null){
   $('mOcorrenciaTitle').textContent=r?'Editar Ocorrência':'Nova Ocorrência';
   $('oData').value=r?.data_ocorrencia||'';
   $('oRua').value=r?.rua_id||'';
-  $('oResp').value=r?.responsavel||'';
+  // Reset responsavel field state
+  const respField=$('oResp');
+  respField.readOnly=false; respField.style.background=''; respField.style.color=''; respField.title='';
+  respField.value=r?.responsavel||'';
+  if(!r){ autoFillResponsavel(); } // nova ocorrência: preenche pelo select
+  else { // edição: aplica read-only se a rua tem responsável cadastrado
+    const selOpt=$('oRua').options[$('oRua').selectedIndex];
+    if(selOpt&&selOpt.value&&selOpt.dataset.resp){
+      respField.readOnly=true; respField.style.background='var(--surface2)'; respField.style.color='var(--text2)';
+      respField.title='Preenchido automaticamente pela rua/setor';
+    }
+  }
   $('oLider').value=r?.lider_responsavel||'';
   $('oDescr').value=r?.ocorrencia||'';
   $('oCrit').value=r?.criticidade||'';
