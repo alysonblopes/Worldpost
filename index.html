@@ -609,7 +609,7 @@ td.truncate{max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ell
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>ID</th><th>Nome da Rua / Setor</th><th>Responsável</th><th>Turno</th><th>Ativo</th><th>Ações</th></tr>
+                <tr><th>ID</th><th>Nome da Rua / Setor</th><th>Responsável</th><th>Líder Responsável</th><th>Turno</th><th>Ativo</th><th>Ações</th></tr>
               </thead>
               <tbody id="tbRuas"></tbody>
             </table>
@@ -767,7 +767,8 @@ td.truncate{max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ell
       <input type="hidden" id="rEditId">
       <div id="mRuaErr" class="msg-err"></div>
       <div class="form-field"><label>Nome da Rua / Setor</label><input type="text" id="rNome" placeholder="Ex: Rua A — Setor Produção"></div>
-      <div class="form-field"><label>Responsável</label><input type="text" id="rResp" placeholder="Nome do responsável pela rua"></div>
+      <div class="form-field"><label>Responsável</label><input type="text" id="rResp" placeholder="Nome do colaborador responsável pela rua"></div>
+      <div class="form-field"><label>Líder Responsável</label><input type="text" id="rLider" placeholder="Nome do líder responsável pelo colaborador"></div>
       <div class="form-field"><label>Turno</label>
         <select id="rTurno"><option value="">Selecione</option><option>1º Turno</option><option>2º Turno</option><option>Comercial</option></select>
       </div>
@@ -1052,7 +1053,7 @@ async function loadRuas(){
   const sel=$('oRua');
   const cur=sel.value;
   sel.innerHTML='<option value="">Selecione a rua</option>';
-  allRuas.forEach(r=>{ sel.innerHTML+=`<option value="${r.id}" data-resp="${esc(r.responsavel||'')}" data-turno="${esc(r.turno||'')}">${esc(r.nome)}</option>`; });
+  allRuas.forEach(r=>{ sel.innerHTML+=`<option value="${r.id}" data-resp="${esc(r.responsavel||'')}" data-lider="${esc(r.lider_responsavel||'')}" data-turno="${esc(r.turno||'')}">${esc(r.nome)}</option>`; });
   if(cur) sel.value=cur;
   // tabela
   if(currentPage==='ruas') renderRuas();
@@ -1074,6 +1075,7 @@ function renderRuas(){
       <td class="mono">#${r.id}</td>
       <td><strong>${esc(r.nome)}</strong></td>
       <td>${esc(r.responsavel||'—')}</td>
+      <td>${esc(r.lider_responsavel||'—')}</td>
       <td>${r.turno?`<span class="badge b-usuario">${esc(r.turno)}</span>`:'—'}</td>
       <td>${r.ativo?'<span class="badge b-resolvido">Ativa</span>':'<span class="badge b-cancelado">Inativa</span>'}</td>
       <td><div class="actions">
@@ -1089,6 +1091,7 @@ function openRuaModal(r=null){
   $('mRuaTitle').textContent=r?'Editar Rua / Setor':'Nova Rua / Setor';
   $('rNome').value=r?.nome||'';
   $('rResp').value=r?.responsavel||'';
+  $('rLider').value=r?.lider_responsavel||'';
   $('rTurno').value=r?.turno||'';
   $('rAtivo').value=r?String(r.ativo):'true';
   $('mRuaErr').style.display='none';
@@ -1099,7 +1102,7 @@ function editRua(id){ const r=allRuas.find(x=>x.id===id); if(r) openRuaModal(r);
 
 async function saveRua(){
   const id=$('rEditId').value;
-  const payload={nome:v('rNome').trim(),responsavel:v('rResp').trim()||null,turno:v('rTurno')||null,ativo:$('rAtivo').value==='true'};
+  const payload={nome:v('rNome').trim(),responsavel:v('rResp').trim()||null,lider_responsavel:v('rLider').trim()||null,turno:v('rTurno')||null,ativo:$('rAtivo').value==='true'};
   if(!payload.nome){ showEl($('mRuaErr'),'Nome é obrigatório.'); return; }
   const btn=$('savRuaBtn'); setBtnLoading(btn,'Salvando...');
   const {error}=id?await sb.from('ruas').update(payload).eq('id',id):await sb.from('ruas').insert(payload);
@@ -1124,25 +1127,41 @@ function autoFillResponsavel(){
   const sel=$('oRua');
   const opt=sel.options[sel.selectedIndex];
   const respField=$('oResp');
-  if(opt && opt.value && opt.dataset.resp){
-    respField.value=opt.dataset.resp;
-    respField.readOnly=true;
-    respField.style.background='var(--surface2)';
-    respField.style.color='var(--text2)';
-    respField.title='Preenchido automaticamente pela rua/setor';
-  } else if(opt && opt.value && !opt.dataset.resp){
-    // Rua selecionada mas sem responsável cadastrado — libera para digitar
-    respField.value='';
-    respField.readOnly=false;
-    respField.style.background='';
-    respField.style.color='';
-    respField.title='';
+  const liderField=$('oLider');
+
+  if(opt && opt.value){
+    // — Responsável —
+    if(opt.dataset.resp){
+      respField.value=opt.dataset.resp;
+      respField.readOnly=true;
+      respField.style.background='var(--surface2)';
+      respField.style.color='var(--text2)';
+      respField.title='Preenchido automaticamente pela rua/setor';
+    } else {
+      respField.value='';
+      respField.readOnly=false;
+      respField.style.background='';
+      respField.style.color='';
+      respField.title='';
+    }
+    // — Líder Responsável —
+    if(opt.dataset.lider){
+      liderField.value=opt.dataset.lider;
+      liderField.readOnly=true;
+      liderField.style.background='var(--surface2)';
+      liderField.style.color='var(--text2)';
+      liderField.title='Preenchido automaticamente pela rua/setor';
+    } else {
+      liderField.value='';
+      liderField.readOnly=false;
+      liderField.style.background='';
+      liderField.style.color='';
+      liderField.title='';
+    }
   } else {
-    respField.value='';
-    respField.readOnly=false;
-    respField.style.background='';
-    respField.style.color='';
-    respField.title='';
+    // Nenhuma rua selecionada — libera ambos
+    respField.value=''; respField.readOnly=false; respField.style.background=''; respField.style.color=''; respField.title='';
+    liderField.value=''; liderField.readOnly=false; liderField.style.background=''; liderField.style.color=''; liderField.title='';
   }
 }
 
@@ -1221,12 +1240,16 @@ function openOcorrenciaModal(r=null){
   const respField=$('oResp');
   respField.readOnly=false; respField.style.background=''; respField.style.color=''; respField.title='';
   respField.value=r?.responsavel||'';
+  // Reset lider field state
+  const liderField=$('oLider');
+  liderField.readOnly=false; liderField.style.background=''; liderField.style.color=''; liderField.title='';
+  liderField.value=r?.lider_responsavel||'';
   if(!r){ autoFillResponsavel(); } // nova ocorrência: preenche pelo select
-  else { // edição: aplica read-only se a rua tem responsável cadastrado
+  else { // edição: aplica read-only se a rua tem dados cadastrados
     const selOpt=$('oRua').options[$('oRua').selectedIndex];
-    if(selOpt&&selOpt.value&&selOpt.dataset.resp){
-      respField.readOnly=true; respField.style.background='var(--surface2)'; respField.style.color='var(--text2)';
-      respField.title='Preenchido automaticamente pela rua/setor';
+    if(selOpt&&selOpt.value){
+      if(selOpt.dataset.resp){ respField.readOnly=true; respField.style.background='var(--surface2)'; respField.style.color='var(--text2)'; respField.title='Preenchido automaticamente pela rua/setor'; }
+      if(selOpt.dataset.lider){ liderField.readOnly=true; liderField.style.background='var(--surface2)'; liderField.style.color='var(--text2)'; liderField.title='Preenchido automaticamente pela rua/setor'; }
     }
   }
   $('oLider').value=r?.lider_responsavel||'';
