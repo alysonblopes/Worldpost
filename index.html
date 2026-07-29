@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Consulta de Saldo de Materiais</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Segoe UI,Arial,sans-serif;
+}
+
+body{
+    background:#f3f5f7;
+    padding:30px;
+}
+
+.container{
+    max-width:1300px;
+    margin:auto;
+}
+
+h2{
+    margin-bottom:20px;
+    color:#154360;
+}
+
+.pesquisa{
+
+    display:flex;
+    gap:10px;
+    margin-bottom:20px;
+
+}
+
+input{
+
+    flex:1;
+    padding:12px;
+    border:1px solid #ccc;
+    border-radius:6px;
+    font-size:15px;
+
+}
+
+button{
+
+    padding:12px 25px;
+    border:none;
+    background:#154360;
+    color:white;
+    border-radius:6px;
+    cursor:pointer;
+    font-weight:bold;
+
+}
+
+button:hover{
+
+    background:#21618C;
+
+}
+
+table{
+
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+
+}
+
+th{
+
+    background:#154360;
+    color:white;
+    padding:12px;
+
+}
+
+td{
+
+    padding:10px;
+    border-bottom:1px solid #ddd;
+
+}
+
+tr:hover{
+
+    background:#F8F9F9;
+
+}
+
+.ok{
+
+    color:green;
+    font-weight:bold;
+
+}
+
+.baixo{
+
+    color:red;
+    font-weight:bold;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Saldo de Materiais</h2>
+
+<div class="pesquisa">
+
+<input
+id="pesquisa"
+placeholder="Pesquisar SKU, Descrição ou Localização">
+
+<button onclick="buscar()">
+
+Pesquisar
+
+</button>
+
+</div>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>SKU</th>
+<th>Descrição</th>
+<th>Categoria</th>
+<th>Localização</th>
+<th>Estoque Mínimo</th>
+<th>Saldo Atual</th>
+<th>Status</th>
+
+</tr>
+
+</thead>
+
+<tbody id="tabela">
+
+</tbody>
+
+</table>
+
+</div>
+
+<script>
+
+//============================
+// CONFIGURAÇÃO SUPABASE
+//============================
+
+const SUPABASE_URL="https://SEU-PROJETO.supabase.co";
+
+const SUPABASE_KEY="SUA_CHAVE_ANON";
+
+const supabase = window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+//============================
+// CARREGA TODOS
+//============================
+
+async function carregar(){
+
+const {data,error}=await supabase
+
+.from("materiais")
+
+.select("*")
+
+.order("descricao");
+
+if(error){
+
+alert(error.message);
+
+return;
+
+}
+
+preencher(data);
+
+}
+
+//============================
+// PESQUISA
+//============================
+
+async function buscar(){
+
+let texto=document.getElementById("pesquisa").value;
+
+if(texto==""){
+
+carregar();
+
+return;
+
+}
+
+const {data,error}=await supabase
+
+.from("materiais")
+
+.select("*")
+
+.or(
+
+`sku.ilike.%${texto}%,
+descricao.ilike.%${texto}%,
+localizacao.ilike.%${texto}%`
+
+);
+
+if(error){
+
+alert(error.message);
+
+return;
+
+}
+
+preencher(data);
+
+}
+
+//============================
+// TABELA
+//============================
+
+function preencher(lista){
+
+const tbody=document.getElementById("tabela");
+
+tbody.innerHTML="";
+
+lista.forEach(item=>{
+
+let status=item.saldo_atual<=item.estoque_minimo
+?"BAIXO"
+:"OK";
+
+let classe=item.saldo_atual<=item.estoque_minimo
+?"baixo"
+:"ok";
+
+tbody.innerHTML+=`
+
+<tr>
+
+<td>${item.sku}</td>
+
+<td>${item.descricao}</td>
+
+<td>${item.categoria}</td>
+
+<td>${item.localizacao}</td>
+
+<td>${item.estoque_minimo}</td>
+
+<td>${item.saldo_atual}</td>
+
+<td class="${classe}">${status}</td>
+
+</tr>
+
+`;
+
+});
+
+}
+
+//============================
+
+carregar();
+
+</script>
+
+</body>
+
+</html>
