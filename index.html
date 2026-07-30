@@ -516,12 +516,13 @@
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
 <div class="mobile-topbar">
   <button class="hamburger" id="hamburgerBtn" aria-label="Abrir menu">☰</button>
-  <div class="title">📦 Gestor Provisório</div>
+  <div class="title">📦 Sistema WMS</div>
 </div>
 
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -531,7 +532,7 @@
 <aside class="sidebar" id="sidebar">
   <button class="sidebar-toggle" id="sidebarToggle" title="Expandir/Recolher menu">‹</button>
   <div class="brand">
-    <h1>📦 <span class="txt">Gestor Provisório</span></h1>
+    <h1>📦 <span class="txt">Sistema WMS</span></h1>
     <div class="subtitle">Cadastros e controle de movimentações</div>
   </div>
 
@@ -1339,6 +1340,121 @@
 </div>
 
 <script>
+  // ======================================================================
+  // INTEGRAÇÃO COM SUPABASE — preencha as duas linhas abaixo com os dados
+  // do seu projeto (Supabase → Project Settings → API).
+  // A anon key é segura para expor no front-end: o acesso real é
+  // controlado pelas políticas de RLS criadas no schema/migração SQL.
+  // ======================================================================
+  const SUPABASE_URL = 'COLE_AQUI_A_URL_DO_SEU_PROJETO_SUPABASE';       // <-- ATUALIZAR AQUI
+  const SUPABASE_ANON_KEY = 'COLE_AQUI_A_ANON_KEY_DO_SEU_PROJETO_SUPABASE'; // <-- ATUALIZAR AQUI
+
+  const supabaseConfigurado = !SUPABASE_URL.includes('COLE_AQUI') && !SUPABASE_ANON_KEY.includes('COLE_AQUI');
+  const supabase = supabaseConfigurado ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+  if (!supabaseConfigurado) {
+    console.warn('Supabase não configurado — preencha SUPABASE_URL e SUPABASE_ANON_KEY no início do <script>. Rodando apenas em memória (os dados não persistem ao recarregar a página).');
+  }
+
+  // Mapa de campos JS (camelCase) -> coluna no banco (snake_case), por tabela.
+  // Mantido explícito (em vez de conversão automática) para evitar ambiguidade
+  // em siglas como "OP", "NF", "kg" dentro dos nomes de campo.
+  const MAPA_CAMPOS = {
+    usuarios: { matricula: 'matricula', nome: 'nome', cargo: 'cargo', permissoes: 'permissoes' },
+    enderecos: { codigo: 'codigo', rua: 'rua', bloco: 'bloco', nivel: 'nivel', capacidadeKg: 'capacidade_kg', status: 'status', observacao: 'observacao', descricao: 'descricao' },
+    materiais: {
+      codigo: 'codigo', descricao: 'descricao', pesoUnitarioKg: 'peso_unitario_kg', familia: 'familia', unidade: 'unidade',
+      estoqueMinimo: 'estoque_minimo', estoqueMaximo: 'estoque_maximo', ativo: 'ativo', pecasPorPct: 'pecas_por_pct',
+      pesoPacoteKg: 'peso_pacote_kg', amarracao: 'amarracao', qtdAltura: 'qtd_altura', qtdPctPorPallet: 'qtd_pct_por_pallet',
+      fracaoPct: 'fracao_pct', totalPct: 'total_pct', qtdTotalPc: 'qtd_total_pc'
+    },
+    movimentacoes: { dataHora: 'data_hora', usuarioId: 'usuario_id', enderecoId: 'endereco_id', materialId: 'material_id', tipo: 'tipo', quantidade: 'quantidade', observacao: 'observacao' },
+    solicitacoes_verificacao: { numeroPedido: 'numero_pedido', materialId: 'material_id', quantidadeSolicitada: 'quantidade_solicitada', quantidadeDisponivel: 'quantidade_disponivel', dataSolicitacao: 'data_solicitacao', status: 'status', producaoGerada: 'producao_gerada' },
+    fila_solicitacoes: { numeroPedido: 'numero_pedido', materialId: 'material_id', quantidadeSolicitada: 'quantidade_solicitada', dataEntradaFila: 'data_entrada_fila', status: 'status' },
+    producoes: { numeroPedidoRef: 'numero_pedido_ref', materialId: 'material_id', quantidadeSolicitada: 'quantidade_solicitada', quantidadeDisponivel: 'quantidade_disponivel', quantidadeProduzir: 'quantidade_produzir', qtdDaOP: 'qtd_da_op', dataGeracao: 'data_geracao', status: 'status', producaoGerada: 'producao_gerada' },
+    apontamentos_producao: {
+      producaoId: 'producao_id', dataHora: 'data_hora', maquina: 'maquina', statusMaquina: 'status_maquina', numeroOP: 'numero_op',
+      qtdProduzidaTurno: 'qtd_produzida_turno', qtdDaOP: 'qtd_da_op', producaoTotalDaOP: 'producao_total_da_op', saldoAProduzir: 'saldo_a_produzir',
+      percentualConclusao: 'percentual_conclusao', tipoEmbalagem: 'tipo_embalagem', especificacaoCaixa: 'especificacao_caixa',
+      qtdNaEmbalagem: 'qtd_na_embalagem', pesoPorVolumeKg: 'peso_por_volume_kg', observacoes: 'observacoes', enderecoId: 'endereco_id',
+      usuarioId: 'usuario_id', movimentacaoId: 'movimentacao_id', qtdApontadaFisica: 'qtd_apontada_fisica', divergencia: 'divergencia'
+    },
+    solicitacoes_material: { materialId: 'material_id', quantidade: 'quantidade', pesoEstimado: 'peso_estimado', data: 'data' },
+    veiculos: { placa: 'placa', modelo: 'modelo', capacidadeKg: 'capacidade_kg', capacidadePallets: 'capacidade_pallets', transportadora: 'transportadora', status: 'status', observacao: 'observacao' },
+    cargas_programadas: { numeroOC: 'numero_oc', janelaCarregamento: 'janela_carregamento', modalidade: 'modalidade', transportadora: 'transportadora', tipoVeiculo: 'tipo_veiculo', placa: 'placa', veiculoId: 'veiculo_id', status: 'status' },
+    itens_carga: { cargaId: 'carga_id', item: 'item', quantidade: 'quantidade', quantidadePallets: 'quantidade_pallets', cliente: 'cliente', destino: 'destino', nf: 'nf', janelaEntrega: 'janela_entrega', status: 'status' },
+    viagens: { veiculoId: 'veiculo_id', cargaId: 'carga_id', motorista: 'motorista', dataHora: 'data_hora', previsaoChegada: 'previsao_chegada', origem: 'origem', destino: 'destino', status: 'status', observacoes: 'observacoes' }
+  };
+
+  function paraBanco(tabela, objJS) {
+    const mapa = MAPA_CAMPOS[tabela];
+    const linha = { id: objJS.id };
+    Object.keys(mapa).forEach(chaveJS => {
+      if (objJS[chaveJS] !== undefined) linha[mapa[chaveJS]] = objJS[chaveJS];
+    });
+    return linha;
+  }
+
+  function paraJS(tabela, linhaBanco) {
+    const mapa = MAPA_CAMPOS[tabela];
+    const objJS = { id: linhaBanco.id };
+    Object.keys(mapa).forEach(chaveJS => {
+      const colDB = mapa[chaveJS];
+      if (linhaBanco[colDB] !== undefined) objJS[chaveJS] = linhaBanco[colDB];
+    });
+    return objJS;
+  }
+
+  // Insere um registro (o id já deve vir preenchido com crypto.randomUUID() pelo código que chama)
+  async function supaInserir(tabela, objJS) {
+    if (!supabaseConfigurado) return;
+    const { error } = await supabase.from(tabela).insert(paraBanco(tabela, objJS));
+    if (error) console.error(`Supabase: erro ao inserir em "${tabela}":`, error.message);
+  }
+
+  // Atualiza campos específicos de um registro já existente
+  async function supaAtualizar(tabela, id, camposJS) {
+    if (!supabaseConfigurado) return;
+    const linha = paraBanco(tabela, { id, ...camposJS });
+    delete linha.id;
+    const { error } = await supabase.from(tabela).update(linha).eq('id', id);
+    if (error) console.error(`Supabase: erro ao atualizar "${tabela}":`, error.message);
+  }
+
+  async function supaRemover(tabela, id) {
+    if (!supabaseConfigurado) return;
+    const { error } = await supabase.from(tabela).delete().eq('id', id);
+    if (error) console.error(`Supabase: erro ao remover de "${tabela}":`, error.message);
+  }
+
+  async function supaListar(tabela) {
+    if (!supabaseConfigurado) return [];
+    const { data, error } = await supabase.from(tabela).select('*');
+    if (error) { console.error(`Supabase: erro ao carregar "${tabela}":`, error.message); return []; }
+    return data.map(linha => paraJS(tabela, linha));
+  }
+
+  // Carrega todas as tabelas do Supabase para o estado em memória ao abrir a página.
+  // Se o Supabase não estiver configurado, o sistema continua funcionando só em
+  // memória (como antes), sem travar nada.
+  async function carregarTudoDoSupabase() {
+    if (!supabaseConfigurado) return;
+    try {
+      const [u, en, mat, mov, solVer, fila, prod, apont, solMat, veic, cargas, itens, viag] = await Promise.all([
+        supaListar('usuarios'), supaListar('enderecos'), supaListar('materiais'), supaListar('movimentacoes'),
+        supaListar('solicitacoes_verificacao'), supaListar('fila_solicitacoes'), supaListar('producoes'),
+        supaListar('apontamentos_producao'), supaListar('solicitacoes_material'), supaListar('veiculos'),
+        supaListar('cargas_programadas'), supaListar('itens_carga'), supaListar('viagens')
+      ]);
+      usuarios = u; enderecos = en; materiais = mat; movimentacoes = mov;
+      solicitacoes = solVer; filaSolicitacoes = fila; producoes = prod;
+      apontamentosProducao = apont; solicitacoesMaterial = solMat; veiculos = veic;
+      cargasProgramadas = cargas; itensCarga = itens; viagens = viag;
+    } catch (err) {
+      console.error('Supabase: falha ao carregar dados iniciais:', err.message);
+    }
+  }
+
   // ============== ESTADO EM MEMÓRIA ==============
   let usuarios = [];      // { id, matricula, nome }
   let veiculos = [];      // { id, placa, modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao }
@@ -1485,13 +1601,15 @@
     const matricula = document.getElementById('usuMatricula').value.trim();
     const cargo = document.getElementById('usuCargo').value;
     if (!nome || !matricula) return;
-    usuarios.push({
-      id: Date.now() + Math.random(),
+    const novoUsuario = {
+      id: crypto.randomUUID(),
       nome,
       matricula,
       cargo,
       permissoes: gerarPermissoesPadrao(cargo)
-    });
+    };
+    usuarios.push(novoUsuario);
+    supaInserir('usuarios', novoUsuario);
     formUsuario.reset();
     document.getElementById('usuCargo').value = 'Usuário';
     renderTudo();
@@ -1499,6 +1617,7 @@
 
   function removerUsuario(id) {
     usuarios = usuarios.filter(u => u.id !== id);
+    supaRemover('usuarios', id);
     renderTudo();
   }
 
@@ -1518,6 +1637,7 @@
     if (!usuario.permissoes) usuario.permissoes = gerarPermissoesPadrao(usuario.cargo);
     const categoria = MODULOS_SISTEMA.find(c => c.chave === categoriaChave);
     categoria.paginas.forEach(p => { usuario.permissoes[categoriaChave][p.chave] = valor; });
+    supaAtualizar('usuarios', usuarioId, { permissoes: usuario.permissoes });
     renderTudo();
     reabrirDetalheUsuario(usuarioId);
   }
@@ -1528,6 +1648,7 @@
     if (!usuario) return;
     if (!usuario.permissoes) usuario.permissoes = gerarPermissoesPadrao(usuario.cargo);
     usuario.permissoes[categoriaChave][paginaChave] = valor;
+    supaAtualizar('usuarios', usuarioId, { permissoes: usuario.permissoes });
     renderTudo();
     reabrirDetalheUsuario(usuarioId);
   }
@@ -1536,6 +1657,7 @@
     const usuario = usuarios.find(u => String(u.id) === String(usuarioId));
     if (!usuario) return;
     usuario.cargo = novoCargo;
+    supaAtualizar('usuarios', usuarioId, { cargo: novoCargo });
     renderTudo();
     reabrirDetalheUsuario(usuarioId);
   }
@@ -1677,8 +1799,8 @@
       alert('⚠ Atenção: essa janela de carregamento está a menos de 1 dia de antecedência. O recomendado é programar a carga com pelo menos 1 dia antes da viagem factual. A carga será criada mesmo assim.');
     }
 
-    cargasProgramadas.push({
-      id: Date.now() + Math.random(),
+    const novaCarga = {
+      id: crypto.randomUUID(),
       numeroOC,
       janelaCarregamento,
       modalidade,
@@ -1687,7 +1809,9 @@
       placa,
       veiculoId,
       status: 'Programada'
-    });
+    };
+    cargasProgramadas.push(novaCarga);
+    supaInserir('cargas_programadas', novaCarga);
 
     formCarga.reset();
     document.getElementById('cargaModalidade').value = 'Dedicado';
@@ -1700,6 +1824,7 @@
   function removerCarga(id) {
     cargasProgramadas = cargasProgramadas.filter(c => String(c.id) !== String(id));
     itensCarga = itensCarga.filter(it => String(it.cargaId) !== String(id));
+    supaRemover('cargas_programadas', id); // "on delete cascade" no banco já remove os itens da carga
     renderTudo();
   }
 
@@ -1761,8 +1886,8 @@
       }
     }
 
-    itensCarga.push({
-      id: Date.now() + Math.random(),
+    const novoItem = {
+      id: crypto.randomUUID(),
       cargaId,
       item,
       quantidade,
@@ -1772,7 +1897,9 @@
       nf: nfInput.value.trim(),
       janelaEntrega: entregaInput.value,
       status: statusSelect.value
-    });
+    };
+    itensCarga.push(novoItem);
+    supaInserir('itens_carga', novoItem);
 
     renderTudo();
     // Mantém o detalhe da carga aberto após adicionar um item
@@ -1786,6 +1913,7 @@
 
   function removerItemCarga(itemId, cargaId) {
     itensCarga = itensCarga.filter(it => String(it.id) !== String(itemId));
+    supaRemover('itens_carga', itemId);
     renderTudo();
     setTimeout(() => {
       const linha = document.getElementById('detalhe_' + cargaId);
@@ -1798,6 +1926,7 @@
   function atualizarStatusItemCarga(itemId, novoStatus) {
     const item = itensCarga.find(it => String(it.id) === String(itemId));
     if (item) item.status = novoStatus;
+    supaAtualizar('itens_carga', itemId, { status: novoStatus });
     renderTudo();
   }
 
@@ -1815,7 +1944,7 @@
     let veiculo = getVeiculoDaCarga(carga);
     if (!veiculo) {
       veiculo = {
-        id: Date.now() + Math.random(),
+        id: crypto.randomUUID(),
         placa: carga.placa,
         modelo: carga.tipoVeiculo,
         capacidadeKg: 0,
@@ -1824,15 +1953,17 @@
         observacao: 'Cadastrado automaticamente a partir da Programação de Cargas'
       };
       veiculos.push(veiculo);
+      supaInserir('veiculos', veiculo);
     }
 
     const itens = itensCarga.filter(it => String(it.cargaId) === String(cargaId));
     const destinos = [...new Set(itens.map(it => it.destino).filter(Boolean))].join(', ');
     const resumoItens = itens.map(it => `${it.item} (${formatarQtd(it.quantidade)} un.)`).join(', ');
 
-    viagens.push({
-      id: Date.now() + Math.random(),
+    const novaViagem = {
+      id: crypto.randomUUID(),
       veiculoId: veiculo.id,
+      cargaId: carga.id,
       motorista: '',
       dataHora: carga.janelaCarregamento,
       previsaoChegada: '',
@@ -1840,9 +1971,12 @@
       destino: destinos || 'A definir',
       observacoes: resumoItens ? `Itens: ${resumoItens}` : '',
       status: 'Programada'
-    });
+    };
+    viagens.push(novaViagem);
+    supaInserir('viagens', novaViagem);
 
     carga.status = 'Convertida em Viagem';
+    supaAtualizar('cargas_programadas', carga.id, { status: 'Convertida em Viagem' });
     renderTudo();
     alert('Carga convertida em viagem! Confira em Expedição → Viagens Programadas / Status de Veículo.');
   }
@@ -1977,8 +2111,11 @@
     const existente = veiculos.find(v => v.placa === placa);
     if (existente) {
       Object.assign(existente, { modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao });
+      supaAtualizar('veiculos', existente.id, { modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao });
     } else {
-      veiculos.push({ id: Date.now() + Math.random(), placa, modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao });
+      const novoVeiculo = { id: crypto.randomUUID(), placa, modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao };
+      veiculos.push(novoVeiculo);
+      supaInserir('veiculos', novoVeiculo);
     }
     formVeiculo.reset();
     document.getElementById('veiStatus').value = 'Disponível';
@@ -1987,6 +2124,7 @@
 
   function removerVeiculo(id) {
     veiculos = veiculos.filter(v => String(v.id) !== String(id));
+    supaRemover('veiculos', id);
     renderTudo();
   }
 
@@ -2020,24 +2158,28 @@
   // ============== EXPEDIÇÃO > VIAGENS PROGRAMADAS / STATUS DE VEÍCULO ==============
   function removerViagem(id) {
     viagens = viagens.filter(vi => String(vi.id) !== String(id));
+    supaRemover('viagens', id);
     renderTudo();
   }
 
   function atualizarMotoristaViagem(id, valor) {
     const viagem = viagens.find(vi => String(vi.id) === String(id));
     if (viagem) viagem.motorista = valor.trim();
+    supaAtualizar('viagens', id, { motorista: valor.trim() });
     renderTudo();
   }
 
   function atualizarDataHoraViagem(id, valor) {
     const viagem = viagens.find(vi => String(vi.id) === String(id));
     if (viagem) viagem.dataHora = valor;
+    supaAtualizar('viagens', id, { dataHora: valor });
     renderTudo();
   }
 
   function atualizarPrevisaoChegadaViagem(id, valor) {
     const viagem = viagens.find(vi => String(vi.id) === String(id));
     if (viagem) viagem.previsaoChegada = valor;
+    supaAtualizar('viagens', id, { previsaoChegada: valor });
     renderTudo();
   }
 
@@ -2046,12 +2188,14 @@
     const viagem = viagens.find(vi => String(vi.id) === String(id));
     if (!viagem) return;
     viagem.status = novoStatus;
+    supaAtualizar('viagens', id, { status: novoStatus });
 
     const veiculo = veiculos.find(v => String(v.id) === String(viagem.veiculoId));
     if (veiculo) {
       if (novoStatus === 'Em Trânsito') veiculo.status = 'Em Viagem';
       else if (novoStatus === 'Concluída' || novoStatus === 'Cancelada') veiculo.status = 'Disponível';
       else if (novoStatus === 'Programada') veiculo.status = 'Em Viagem';
+      supaAtualizar('veiculos', veiculo.id, { status: veiculo.status });
     }
     renderTudo();
   }
@@ -2060,6 +2204,15 @@
     if (!valorDatetimeLocal) return '-';
     const [data, hora] = valorDatetimeLocal.split('T');
     return `${formatarDataBR(data)} ${hora || ''}`.trim();
+  }
+
+  // Formata um timestamp ISO completo (ex: gerado por new Date().toISOString(), com segundos/Z)
+  // para exibição em pt-BR. Diferente de formatarDataHoraBR, que trata valores de <input datetime-local>.
+  function formatarDataHoraCompletaBR(valorISO) {
+    if (!valorISO) return '-';
+    const d = new Date(valorISO);
+    if (isNaN(d.getTime())) return valorISO; // já veio em outro formato: mostra como está
+    return d.toLocaleString('pt-BR');
   }
 
   function construirBlocoPrevisao(vi) {
@@ -2186,8 +2339,11 @@
     const existente = enderecos.find(en => en.codigo === codigo);
     if (existente) {
       Object.assign(existente, { rua, bloco, nivel, capacidadeKg, status, observacao });
+      supaAtualizar('enderecos', existente.id, { rua, bloco, nivel, capacidadeKg, status, observacao });
     } else {
-      enderecos.push({ id: Date.now() + Math.random(), codigo, rua, bloco, nivel, capacidadeKg, status, observacao, descricao: '' });
+      const novoEndereco = { id: crypto.randomUUID(), codigo, rua, bloco, nivel, capacidadeKg, status, observacao, descricao: '' };
+      enderecos.push(novoEndereco);
+      supaInserir('enderecos', novoEndereco);
     }
     formEndereco.reset();
     document.getElementById('endStatus').value = 'LIVRE';
@@ -2201,6 +2357,7 @@
       return;
     }
     enderecos = enderecos.filter(e => e.id !== id);
+    supaRemover('enderecos', id);
     renderTudo();
   }
 
@@ -2244,13 +2401,16 @@
     const descricao = document.getElementById('matDescricao').value.trim();
     const pesoUnitarioKg = parseFloat(document.getElementById('matPesoUnitario').value) || 0;
     if (!codigo || !descricao) return;
-    materiais.push({ id: Date.now() + Math.random(), codigo, descricao, pesoUnitarioKg });
+    const novoMaterial = { id: crypto.randomUUID(), codigo, descricao, pesoUnitarioKg };
+    materiais.push(novoMaterial);
+    supaInserir('materiais', novoMaterial);
     formMaterial.reset();
     renderTudo();
   });
 
   function removerMaterial(id) {
     materiais = materiais.filter(m => m.id !== id);
+    supaRemover('materiais', id);
     renderTudo();
   }
 
@@ -2372,11 +2532,13 @@
 
     if (!usuarioId || !enderecoId || !materialId || isNaN(quantidade) || quantidade <= 0) return;
 
-    movimentacoes.push({
-      id: Date.now() + Math.random(),
-      dataHora: new Date().toLocaleString('pt-BR'),
+    const novaMovimentacao = {
+      id: crypto.randomUUID(),
+      dataHora: new Date().toISOString(),
       usuarioId, enderecoId, materialId, tipo, quantidade
-    });
+    };
+    movimentacoes.push(novaMovimentacao);
+    supaInserir('movimentacoes', novaMovimentacao);
 
     document.getElementById('movQuantidade').value = '';
     renderTudo();
@@ -2384,6 +2546,7 @@
 
   function removerMovimentacao(id) {
     movimentacoes = movimentacoes.filter(m => m.id !== id);
+    supaRemover('movimentacoes', id);
     renderTudo();
   }
 
@@ -2421,14 +2584,16 @@
 
     if (totalAbertas >= LIMITE_SOLICITACOES_ABERTAS) {
       // Limite atingido: solicitação vai para a fila de espera
-      filaSolicitacoes.push({
-        id: Date.now() + Math.random(),
+      const novaFila = {
+        id: crypto.randomUUID(),
         numeroPedido,
         materialId,
         quantidadeSolicitada,
-        dataEntradaFila: new Date().toDateString(),
+        dataEntradaFila: new Date().toISOString(),
         status: 'Em fila'
-      });
+      };
+      filaSolicitacoes.push(novaFila);
+      supaInserir('fila_solicitacoes', novaFila);
 
       alert(
         `⚠ Limite de ${LIMITE_SOLICITACOES_ABERTAS} solicitações em aberto atingido.\n\n` +
@@ -2442,15 +2607,17 @@
       return;
     }
 
-    solicitacoes.push({
-      id: Date.now() + Math.random(),
+    const novaSolicitacao = {
+      id: crypto.randomUUID(),
       numeroPedido,
       materialId,
       quantidadeSolicitada,
       quantidadeDisponivel: null,
       dataSolicitacao,
       status: 'Aberta'
-    });
+    };
+    solicitacoes.push(novaSolicitacao);
+    supaInserir('solicitacoes_verificacao', novaSolicitacao);
 
     formSolicitacao.reset();
     preencherDataHoje();
@@ -2462,7 +2629,7 @@
     let totalAbertas = solicitacoes.filter(s => s.status === 'Aberta').length;
     while (totalAbertas < LIMITE_SOLICITACOES_ABERTAS && filaSolicitacoes.length > 0) {
       const proxima = filaSolicitacoes.shift();
-      solicitacoes.push({
+      const novaSolicitacao = {
         id: proxima.id,
         numeroPedido: proxima.numeroPedido,
         materialId: proxima.materialId,
@@ -2470,7 +2637,10 @@
         quantidadeDisponivel: null,
         dataSolicitacao: new Date().toISOString().slice(0, 10),
         status: 'Aberta'
-      });
+      };
+      solicitacoes.push(novaSolicitacao);
+      supaRemover('fila_solicitacoes', proxima.id);
+      supaInserir('solicitacoes_verificacao', novaSolicitacao);
       totalAbertas++;
     }
   }
@@ -2488,6 +2658,7 @@
 
   function removerSolicitacao(id) {
     solicitacoes = solicitacoes.filter(s => s.id !== id);
+    supaRemover('solicitacoes_verificacao', id);
     liberarProximaDaFila();
     renderTudo();
   }
@@ -2496,6 +2667,7 @@
   function concluirSolicitacao(id) {
     const s = solicitacoes.find(s => s.id === id);
     if (s) s.status = 'Verificação concluída';
+    supaAtualizar('solicitacoes_verificacao', id, { status: 'Verificação concluída' });
     liberarProximaDaFila();
     renderTudo();
   }
@@ -2512,6 +2684,7 @@
     }
     s.quantidadeDisponivel = valor;
     s.status = 'Verificação concluída';
+    supaAtualizar('solicitacoes_verificacao', id, { quantidadeDisponivel: valor, status: 'Verificação concluída' });
     liberarProximaDaFila();
     renderTudo();
   }
@@ -2678,13 +2851,15 @@
     const mat = getMaterial(materialId);
     const pesoEstimado = (mat && mat.pesoUnitarioKg) ? quantidade * mat.pesoUnitarioKg : null;
 
-    solicitacoesMaterial.push({
-      id: Date.now() + Math.random(),
+    const novaSolicitacaoMaterial = {
+      id: crypto.randomUUID(),
       materialId,
       quantidade,
       pesoEstimado,
       data
-    });
+    };
+    solicitacoesMaterial.push(novaSolicitacaoMaterial);
+    supaInserir('solicitacoes_material', novaSolicitacaoMaterial);
 
     formSolicitacaoMaterial.reset();
     preencherDataHojeMaterial();
@@ -2693,6 +2868,7 @@
 
   function removerSolicitacaoMaterial(id) {
     solicitacoesMaterial = solicitacoesMaterial.filter(s => String(s.id) !== String(id));
+    supaRemover('solicitacoes_material', id);
     renderTudo();
   }
 
@@ -2765,18 +2941,21 @@
 
     const quantidadeProduzir = Math.max((s.quantidadeSolicitada || 0) - (s.quantidadeDisponivel || 0), 0);
 
-    producoes.push({
-      id: Date.now() + Math.random(),
+    const novaProducao = {
+      id: crypto.randomUUID(),
       numeroPedidoRef: s.numeroPedido,
       materialId: s.materialId,
       quantidadeSolicitada: s.quantidadeSolicitada,
       quantidadeDisponivel: s.quantidadeDisponivel,
       quantidadeProduzir,
-      dataGeracao: new Date().toLocaleDateString('pt-BR'),
+      dataGeracao: new Date().toISOString().slice(0, 10),
       status: 'Aguardando Produção'
-    });
+    };
+    producoes.push(novaProducao);
+    supaInserir('producoes', novaProducao);
 
     s.producaoGerada = true;
+    supaAtualizar('solicitacoes_verificacao', id, { producaoGerada: true });
     renderTudo();
   }
 
@@ -2888,7 +3067,7 @@
       tr.setAttribute('onclick', `toggleDetalheApontamento('${a.id}')`);
       tr.innerHTML = `
         <td><span class="expand-arrow" id="seta_${a.id}">▸</span></td>
-        <td>${a.dataHora}</td>
+        <td>${formatarDataHoraCompletaBR(a.dataHora)}</td>
         <td>${p ? p.numeroPedidoRef : '-'}</td>
         <td><span class="badge">${mat ? mat.codigo : '(removido)'}</span></td>
         <td>${mat ? mat.descricao : '-'}</td>
@@ -2958,6 +3137,7 @@
     const divergencia = qtdFisica - a.qtdProduzidaTurno;
     a.qtdApontadaFisica = qtdFisica;
     a.divergencia = divergencia;
+    supaAtualizar('apontamentos_producao', id, { qtdApontadaFisica: qtdFisica, divergencia });
 
     // Registra a divergência como observação na movimentação de estoque vinculada
     const mov = movimentacoes.find(m => String(m.id) === String(a.movimentacaoId));
@@ -2966,6 +3146,7 @@
         ? `Conferido: qtde apontada em sistema (${formatarQtd(a.qtdProduzidaTurno)}) confere com a física.`
         : `Divergência apontamento: sistema ${formatarQtd(a.qtdProduzidaTurno)} × físico ${formatarQtd(qtdFisica)} ` +
           `(${divergencia > 0 ? '+' : ''}${formatarQtd(divergencia)}).`;
+      supaAtualizar('movimentacoes', mov.id, { observacao: mov.observacao });
     }
 
     renderTudo();
@@ -2976,8 +3157,12 @@
     if (!a) return;
     a.qtdApontadaFisica = null;
     a.divergencia = null;
+    supaAtualizar('apontamentos_producao', id, { qtdApontadaFisica: null, divergencia: null });
     const mov = movimentacoes.find(m => String(m.id) === String(a.movimentacaoId));
-    if (mov) mov.observacao = '';
+    if (mov) {
+      mov.observacao = '';
+      supaAtualizar('movimentacoes', mov.id, { observacao: '' });
+    }
     renderTudo();
     // Reabre o detalhe já expandido para facilitar nova conferência
     setTimeout(() => toggleDetalheApontamento(id), 0);
@@ -3023,13 +3208,13 @@
     const saldoAProduzir = Math.max(qtdDaOP - producaoTotalDaOP, 0);
     const percentualConclusao = qtdDaOP > 0 ? (producaoTotalDaOP / qtdDaOP * 100) : 0;
 
-    const idApontamento = Date.now() + Math.random();
-    const idMovimentacao = Date.now() + Math.random() + 0.001;
+    const idApontamento = crypto.randomUUID();
+    const idMovimentacao = crypto.randomUUID();
 
-    apontamentosProducao.push({
+    const novoApontamento = {
       id: idApontamento,
       producaoId: p.id,
-      dataHora: new Date().toLocaleString('pt-BR'),
+      dataHora: new Date().toISOString(),
       maquina: maquinaInput.value.trim(),
       statusMaquina: statusSelect.value,
       numeroOP: numOPInput.value.trim(),
@@ -3048,23 +3233,29 @@
       movimentacaoId: idMovimentacao,
       qtdApontadaFisica: null,
       divergencia: null
-    });
+    };
+    apontamentosProducao.push(novoApontamento);
+    supaInserir('apontamentos_producao', novoApontamento);
+    supaAtualizar('producoes', p.id, { qtdDaOP });
 
     // Gera entrada em estoque com o material produzido neste turno
-    movimentacoes.push({
+    const novaMovimentacao = {
       id: idMovimentacao,
-      dataHora: new Date().toLocaleString('pt-BR'),
+      dataHora: new Date().toISOString(),
       usuarioId,
       enderecoId,
       materialId: p.materialId,
       tipo: 'entrada',
       quantidade: qtdProduzidaTurno,
       observacao: ''
-    });
+    };
+    movimentacoes.push(novaMovimentacao);
+    supaInserir('movimentacoes', novaMovimentacao);
 
     // Só marca a produção como concluída quando o total acumulado atingir a Qtd. da OP
     if (producaoTotalDaOP >= qtdDaOP) {
       p.status = 'Produzido';
+      supaAtualizar('producoes', p.id, { status: 'Produzido' });
     }
 
     renderTudo();
@@ -3242,12 +3433,12 @@
     }
 
     const pisoId = getOuCriarEnderecoPiso().id;
-    const agora = new Date().toLocaleString('pt-BR');
+    const agora = new Date().toISOString();
     const destino = getEndereco(enderecoDestinoId);
 
     // Saída de PISO
-    movimentacoes.push({
-      id: Date.now() + Math.random(),
+    const movSaida = {
+      id: crypto.randomUUID(),
       dataHora: agora,
       usuarioId,
       enderecoId: pisoId,
@@ -3255,11 +3446,13 @@
       tipo: 'saida',
       quantidade,
       observacao: `Alocação de piso para posição ${destino ? destino.codigo : ''}`
-    });
+    };
+    movimentacoes.push(movSaida);
+    supaInserir('movimentacoes', movSaida);
 
     // Entrada na posição definitiva
-    movimentacoes.push({
-      id: Date.now() + Math.random() + 0.001,
+    const movEntrada = {
+      id: crypto.randomUUID(),
       dataHora: agora,
       usuarioId,
       enderecoId: enderecoDestinoId,
@@ -3267,7 +3460,9 @@
       tipo: 'entrada',
       quantidade,
       observacao: 'Material recebido do Piso (Stand By)'
-    });
+    };
+    movimentacoes.push(movEntrada);
+    supaInserir('movimentacoes', movEntrada);
 
     renderTudo();
   }
@@ -3307,8 +3502,9 @@
   function getOrCriarUsuarioImportacao() {
     let usu = usuarios.find(u => u.matricula === 'IMPORTACAO');
     if (!usu) {
-      usu = { id: 'usuario-importacao-sistema', matricula: 'IMPORTACAO', nome: 'Importação de Planilha (sistema)' };
+      usu = { id: '00000000-0000-0000-0000-000000000001', matricula: 'IMPORTACAO', nome: 'Importação de Planilha (sistema)' };
       usuarios.push(usu);
+      supaInserir('usuarios', usu);
     }
     return usu;
   }
@@ -3319,7 +3515,7 @@
     let piso = enderecos.find(en => en.codigo === CODIGO_ENDERECO_PISO);
     if (!piso) {
       piso = {
-        id: 'endereco-piso-standby',
+        id: '00000000-0000-0000-0000-000000000002',
         codigo: CODIGO_ENDERECO_PISO,
         rua: '', bloco: '', nivel: '',
         capacidadeKg: 0,
@@ -3328,6 +3524,7 @@
         descricao: ''
       };
       enderecos.push(piso);
+      supaInserir('enderecos', piso);
     }
     return piso;
   }
@@ -3361,30 +3558,38 @@
 
       let endereco = enderecos.find(en => en.codigo === codigoPosicao);
       if (!endereco) {
-        endereco = { id: Date.now() + Math.random(), codigo: codigoPosicao, rua: '', bloco: '', nivel: '', capacidadeKg: 0, status: 'OCUPADO', observacao: '', descricao: '' };
+        endereco = { id: crypto.randomUUID(), codigo: codigoPosicao, rua: '', bloco: '', nivel: '', capacidadeKg: 0, status: 'OCUPADO', observacao: '', descricao: '' };
         enderecos.push(endereco);
+        supaInserir('enderecos', endereco);
         enderecosCriados++;
       }
 
       let material = materiais.find(m => m.codigo === codigoMaterial);
       if (!material) {
-        material = { id: Date.now() + Math.random(), codigo: codigoMaterial, descricao: descricaoMaterial || codigoMaterial };
+        material = { id: crypto.randomUUID(), codigo: codigoMaterial, descricao: descricaoMaterial || codigoMaterial };
         materiais.push(material);
+        supaInserir('materiais', material);
         materiaisCriados++;
       }
 
-      const agora = new Date().toLocaleString('pt-BR');
+      const agora = new Date().toISOString();
       if (entradas > 0) {
-        movimentacoes.push({ id: Date.now() + Math.random(), dataHora: agora, usuarioId: usuarioImportacao.id, enderecoId: endereco.id, materialId: material.id, tipo: 'entrada', quantidade: entradas });
+        const mov = { id: crypto.randomUUID(), dataHora: agora, usuarioId: usuarioImportacao.id, enderecoId: endereco.id, materialId: material.id, tipo: 'entrada', quantidade: entradas };
+        movimentacoes.push(mov);
+        supaInserir('movimentacoes', mov);
       }
       if (saidas > 0) {
-        movimentacoes.push({ id: Date.now() + Math.random(), dataHora: agora, usuarioId: usuarioImportacao.id, enderecoId: endereco.id, materialId: material.id, tipo: 'saida', quantidade: saidas });
+        const mov = { id: crypto.randomUUID(), dataHora: agora, usuarioId: usuarioImportacao.id, enderecoId: endereco.id, materialId: material.id, tipo: 'saida', quantidade: saidas };
+        movimentacoes.push(mov);
+        supaInserir('movimentacoes', mov);
       }
       if (entradas === 0 && saidas === 0 && !isNaN(saldoInformado) && saldoInformado !== 0) {
-        movimentacoes.push({
-          id: Date.now() + Math.random(), dataHora: agora, usuarioId: usuarioImportacao.id, enderecoId: endereco.id, materialId: material.id,
+        const mov = {
+          id: crypto.randomUUID(), dataHora: agora, usuarioId: usuarioImportacao.id, enderecoId: endereco.id, materialId: material.id,
           tipo: saldoInformado >= 0 ? 'entrada' : 'saida', quantidade: Math.abs(saldoInformado)
-        });
+        };
+        movimentacoes.push(mov);
+        supaInserir('movimentacoes', mov);
       }
       linhasProcessadas++;
     });
@@ -3456,9 +3661,12 @@
       const existente = enderecos.find(en => en.codigo === codigo);
       if (existente) {
         Object.assign(existente, { rua, bloco, nivel, capacidadeKg, status, observacao });
+        supaAtualizar('enderecos', existente.id, { rua, bloco, nivel, capacidadeKg, status, observacao });
         atualizados++;
       } else {
-        enderecos.push({ id: Date.now() + Math.random(), codigo, rua, bloco, nivel, capacidadeKg, status, observacao, descricao: '' });
+        const novoEndereco = { id: crypto.randomUUID(), codigo, rua, bloco, nivel, capacidadeKg, status, observacao, descricao: '' };
+        enderecos.push(novoEndereco);
+        supaInserir('enderecos', novoEndereco);
         criados++;
       }
     });
@@ -3517,26 +3725,29 @@
 
       let material = materiais.find(m => m.codigo === codigoProduto);
       if (!material) {
-        material = { id: Date.now() + Math.random(), codigo: codigoProduto, descricao: descricaoProduto || codigoProduto, pesoUnitarioKg: 0 };
+        material = { id: crypto.randomUUID(), codigo: codigoProduto, descricao: descricaoProduto || codigoProduto, pesoUnitarioKg: 0 };
         materiais.push(material);
+        supaInserir('materiais', material);
         materiaisCriados++;
       }
 
       let producao = producoes.find(p => p.numeroPedidoRef === numeroPedido && String(p.materialId) === String(material.id));
+      let producaoEhNova = false;
       if (!producao) {
         producao = {
-          id: Date.now() + Math.random(),
+          id: crypto.randomUUID(),
           numeroPedidoRef: numeroPedido,
           materialId: material.id,
           quantidadeSolicitada: null,
           quantidadeDisponivel: null,
           quantidadeProduzir: qtdDaOP,
           qtdDaOP: qtdDaOP,
-          dataGeracao: new Date().toLocaleDateString('pt-BR'),
+          dataGeracao: new Date().toISOString().slice(0, 10),
           status: 'Aguardando Produção',
           producaoGerada: true
         };
         producoes.push(producao);
+        producaoEhNova = true;
         producoesCriadas++;
       }
       if (qtdDaOP > 0) producao.qtdDaOP = qtdDaOP;
@@ -3547,13 +3758,19 @@
       const saldoAProduzir = Math.max(qtdDaOPFinal - producaoTotalDaOP, 0);
       const percentualConclusao = qtdDaOPFinal > 0 ? (producaoTotalDaOP / qtdDaOPFinal * 100) : 0;
 
-      const idApontamento = Date.now() + Math.random();
-      const idMovimentacao = Date.now() + Math.random() + 0.001;
+      const idApontamento = crypto.randomUUID();
+      const idMovimentacao = crypto.randomUUID();
 
-      apontamentosProducao.push({
+      if (producaoEhNova) {
+        supaInserir('producoes', producao);
+      } else {
+        supaAtualizar('producoes', producao.id, { qtdDaOP: producao.qtdDaOP });
+      }
+
+      const novoApontamento = {
         id: idApontamento,
         producaoId: producao.id,
-        dataHora: new Date().toLocaleString('pt-BR'),
+        dataHora: new Date().toISOString(),
         maquina,
         statusMaquina,
         numeroOP,
@@ -3572,21 +3789,26 @@
         movimentacaoId: idMovimentacao,
         qtdApontadaFisica: null,
         divergencia: null
-      });
+      };
+      apontamentosProducao.push(novoApontamento);
+      supaInserir('apontamentos_producao', novoApontamento);
 
-      movimentacoes.push({
+      const novaMovimentacao = {
         id: idMovimentacao,
-        dataHora: new Date().toLocaleString('pt-BR'),
+        dataHora: new Date().toISOString(),
         usuarioId: usuarioImportacao.id,
         enderecoId,
         materialId: material.id,
         tipo: 'entrada',
         quantidade: qtdProduzidaTurno,
         observacao: ''
-      });
+      };
+      movimentacoes.push(novaMovimentacao);
+      supaInserir('movimentacoes', novaMovimentacao);
 
       if (producaoTotalDaOP >= qtdDaOPFinal) {
         producao.status = 'Produzido';
+        supaAtualizar('producoes', producao.id, { status: 'Produzido' });
       }
 
       linhasProcessadas++;
@@ -3608,7 +3830,7 @@
   function getOrCriarMaterial(codigo) {
     let material = materiais.find(m => m.codigo === codigo);
     if (!material) {
-      material = { id: Date.now() + Math.random(), codigo, descricao: '' };
+      material = { id: crypto.randomUUID(), codigo, descricao: '' };
       materiais.push(material);
     }
     return material;
@@ -3671,7 +3893,13 @@
       if (!isNaN(totalPct)) material.totalPct = totalPct;
       if (!isNaN(qtdTotalPc)) material.qtdTotalPc = qtdTotalPc;
 
-      if (existiaAntes) atualizados++; else criados++;
+      if (existiaAntes) {
+        supaAtualizar('materiais', material.id, material);
+        atualizados++;
+      } else {
+        supaInserir('materiais', material);
+        criados++;
+      }
     });
 
     event.target.value = '';
@@ -3719,7 +3947,13 @@
       if (qtdPctPorPallet) material.qtdPctPorPallet = qtdPctPorPallet;
       if (!isNaN(qtdTotal)) material.qtdTotalPc = qtdTotal;
 
-      if (existiaAntes) atualizados++; else criados++;
+      if (existiaAntes) {
+        supaAtualizar('materiais', material.id, material);
+        atualizados++;
+      } else {
+        supaInserir('materiais', material);
+        criados++;
+      }
     });
 
     event.target.value = '';
@@ -3784,7 +4018,7 @@
       const tipoLabel = m.tipo === 'entrada' ? 'Entrada' : 'Saída';
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${m.dataHora}</td>
+        <td>${formatarDataHoraCompletaBR(m.dataHora)}</td>
         <td>${usu ? usu.nome : '(removido)'}</td>
         <td>${end ? end.codigo : '(removido)'}</td>
         <td>${mat ? mat.codigo + ' - ' + mat.descricao : '(removido)'}</td>
@@ -3820,7 +4054,7 @@
     atualizarBadgesSolicitacao();
   }
 
-  renderTudo();
+  carregarTudoDoSupabase().finally(renderTudo);
 </script>
 
 </body>
