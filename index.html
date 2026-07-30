@@ -1346,8 +1346,8 @@
   // A anon key é segura para expor no front-end: o acesso real é
   // controlado pelas políticas de RLS criadas no schema/migração SQL.
   // ======================================================================
-  const SUPABASE_URL = 'COLE_AQUI_A_URL_DO_SEU_PROJETO_SUPABASE';       // <-- ATUALIZAR AQUI
-  const SUPABASE_ANON_KEY = 'COLE_AQUI_A_ANON_KEY_DO_SEU_PROJETO_SUPABASE'; // <-- ATUALIZAR AQUI
+  const SUPABASE_URL = 'https://viqezviwijbauuibcjqf.supabase.co';       // <-- ATUALIZAR AQUI
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcWV6dml3aWpiYXV1aWJjanFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MDczMjMsImV4cCI6MjA5NjQ4MzMyM30.0dxM31DPkvtw5sNKbvd3JrkAbR5tNb89ppbOgJBg9jE'; // <-- ATUALIZAR AQUI
 
   const supabaseConfigurado = !SUPABASE_URL.includes('COLE_AQUI') && !SUPABASE_ANON_KEY.includes('COLE_AQUI');
   const supabase = supabaseConfigurado ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
