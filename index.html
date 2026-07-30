@@ -1,303 +1,3827 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Consulta de Saldo de Materiais</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+<title>Saldo de Material por Posição</title>
 <style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f4f6f8;
+    margin: 0;
+    padding: 0;
+    color: #222;
+  }
+  .app-layout {
+    display: flex;
+    min-height: 100vh;
+  }
 
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:Segoe UI,Arial,sans-serif;
-}
+  aside.sidebar {
+    width: 250px;
+    flex-shrink: 0;
+    background: #16283f;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    transition: width 0.2s ease;
+    position: relative;
+  }
+  .sidebar-toggle {
+    position: absolute;
+    top: 16px;
+    right: -13px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #2563eb;
+    border: 2px solid #16283f;
+    color: #fff;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    transition: transform 0.2s ease;
+  }
+  aside.sidebar.mini .sidebar-toggle { transform: rotate(180deg); }
 
-body{
-    background:#f3f5f7;
-    padding:30px;
-}
+  aside.sidebar.mini { width: 68px; }
+  aside.sidebar.mini .brand .subtitle,
+  aside.sidebar.mini .brand h1 span.txt,
+  aside.sidebar.mini .nav-category .txt,
+  aside.sidebar.mini .nav-category .cat-arrow,
+  aside.sidebar.mini nav button .txt {
+    display: none;
+  }
+  aside.sidebar.mini .brand { padding: 0 0 20px 0; text-align: center; }
+  aside.sidebar.mini .nav-category { justify-content: center; padding: 12px 0; }
+  aside.sidebar.mini nav { padding: 0 8px 10px 8px; max-height: 500px !important; opacity: 1 !important; }
+  aside.sidebar.mini nav button { justify-content: center; padding: 11px 0; position: relative; }
+  aside.sidebar.mini nav button .ico { width: auto; font-size: 18px; }
+  .sidebar .brand {
+    padding: 0 20px 20px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 10px;
+  }
+  .sidebar .brand h1 {
+    margin: 0 0 4px 0;
+    font-size: 17px;
+    color: #fff;
+  }
+  .sidebar .brand .subtitle {
+    font-size: 11.5px;
+    color: #9fb0c9;
+    line-height: 1.4;
+  }
 
-.container{
-    max-width:1300px;
-    margin:auto;
-}
+  .nav-category {
+    padding: 14px 20px 6px 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6f85a3;
+  }
 
-h2{
-    margin-bottom:20px;
-    color:#154360;
-}
+  .nav-group { margin-bottom: 4px; padding-top: 6px; }
+  .nav-group + .nav-group { border-top: 1px solid rgba(255,255,255,0.08); margin-top: 6px; }
 
-.pesquisa{
+  .nav-category {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 20px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9fb0c9;
+    background: transparent;
+    border: none;
+    width: 100%;
+    cursor: pointer;
+    text-align: left;
+  }
+  .nav-category:hover { color: #fff; }
+  .nav-category .cat-left { display: flex; align-items: center; gap: 8px; }
+  .nav-category .cat-arrow {
+    transition: transform 0.2s ease;
+    font-size: 10px;
+  }
+  .nav-group.collapsed .cat-arrow { transform: rotate(-90deg); }
 
-    display:flex;
-    gap:10px;
-    margin-bottom:20px;
+  nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 10px 10px 10px;
+    overflow: hidden;
+    max-height: 500px;
+    transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.2s ease;
+    opacity: 1;
+  }
+  .nav-group.collapsed nav {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  nav button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    border: none;
+    color: #cfd9e8;
+    padding: 11px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    text-align: left;
+    transition: 0.15s;
+  }
+  nav button .ico { font-size: 15px; width: 18px; text-align: center; }
+  nav button:hover { color: #fff; background: rgba(255,255,255,0.06); }
+  nav button.active {
+    color: #fff;
+    background: #2563eb;
+  }
+  .nav-badge {
+    display: none;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  aside.sidebar.mini .nav-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 16px;
+    height: 16px;
+    font-size: 10px;
+    margin-left: 0;
+  }
 
-}
+  main {
+    flex: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 30px 20px 40px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+  }
 
-input{
+  .page-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1f3a5f;
+    margin: 0 0 4px 0;
+  }
+  .page-subtitle {
+    font-size: 13px;
+    color: #777;
+    margin: 0 0 10px 0;
+  }
 
-    flex:1;
-    padding:12px;
-    border:1px solid #ccc;
-    border-radius:6px;
-    font-size:15px;
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
-}
+  .mobile-topbar { display: none; }
+  .sidebar-overlay { display: none; }
 
-button{
+  @media (max-width: 800px) {
+    .mobile-topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #16283f;
+      color: #fff;
+      padding: 12px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+    .mobile-topbar .hamburger {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px 6px;
+    }
+    .mobile-topbar .title {
+      font-size: 15px;
+      font-weight: 700;
+    }
 
-    padding:12px 25px;
-    border:none;
-    background:#154360;
-    color:white;
-    border-radius:6px;
-    cursor:pointer;
-    font-weight:bold;
+    .app-layout { flex-direction: column; }
 
-}
+    aside.sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 270px;
+      max-width: 82vw;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      z-index: 50;
+      box-shadow: 2px 0 16px rgba(0,0,0,0.3);
+    }
+    aside.sidebar.mobile-open { transform: translateX(0); }
 
-button:hover{
+    /* No mobile o botão de recolher (modo mini) fica escondido; usamos o drawer */
+    .sidebar-toggle { display: none; }
+    aside.sidebar.mini { width: 270px; }
+    aside.sidebar.mini .brand .subtitle,
+    aside.sidebar.mini .brand h1 span.txt,
+    aside.sidebar.mini .nav-category .txt,
+    aside.sidebar.mini .nav-category .cat-arrow,
+    aside.sidebar.mini nav button .txt {
+      display: inline !important;
+    }
+    aside.sidebar.mini .brand { padding: 0 20px 20px 20px; text-align: left; }
+    aside.sidebar.mini .nav-category { justify-content: space-between; padding: 12px 20px; }
+    aside.sidebar.mini nav button { justify-content: flex-start; padding: 11px 12px; }
 
-    background:#21618C;
+    .sidebar-overlay {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 45;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .sidebar-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
 
-}
+    main {
+      padding: 16px 14px 30px 14px;
+      max-width: 100%;
+    }
+    .page-title { font-size: 17px; }
+    .page-subtitle { font-size: 12px; }
 
-table{
+    form.grid { grid-template-columns: 1fr; }
 
-    width:100%;
-    border-collapse:collapse;
-    background:white;
+    .filtro { flex-direction: column; }
+    .filtro input { max-width: 100%; }
 
-}
+    table { font-size: 12.5px; }
+    th, td { padding: 7px 8px; }
+  }
 
-th{
+  .page { display: none; }
+  .page.active { display: block; }
 
-    background:#154360;
-    color:white;
-    padding:12px;
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    margin-top: 0;
+    font-size: 18px;
+    color: #1f3a5f;
+    border-bottom: 2px solid #e8edf2;
+    padding-bottom: 8px;
+  }
+  form.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    align-items: end;
+  }
+  label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+    display: block;
+    margin-bottom: 4px;
+  }
+  input, select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  button.btn {
+    padding: 9px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button.btn:hover { background: #1d4fd1; }
+  button.danger { background: #dc2626; }
+  button.danger:hover { background: #b91c1c; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 13.5px;
+  }
+  th, td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid #e5e9ee;
+  }
+  th { background: #f0f3f7; color: #333; }
+  tr:hover { background: #fafbfc; }
+  .entrada { color: #157a3d; font-weight: 600; }
+  .saida { color: #c0392b; font-weight: 600; }
+  .neg { color: #c0392b; font-weight: 700; }
+  .pos { color: #157a3d; font-weight: 700; }
+  .empty-msg { color: #888; font-style: italic; padding: 10px 0; }
+  .filtro { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .filtro input { max-width: 220px; }
+  .actions-col { text-align: center; width: 60px; }
+  .badge {
+    display: inline-block;
+    background: #eef2ff;
+    color: #2563eb;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .btn-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #475569;
+    color: #fff;
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+  }
+  .btn-file:hover { background: #334155; }
+  .btn-file input[type="file"] { display: none; }
+  .btn-export { background: #157a3d; }
+  .btn-export:hover { background: #0f5c2c; }
+  .toolbar-hint { color: #666; font-size: 12.5px; margin: -6px 0 14px 0; }
+  tr.linha-expansivel { cursor: pointer; }
+  tr.linha-expansivel:hover { background: #eef2ff; }
+  .expand-arrow { display: inline-block; transition: transform 0.15s; color: #2563eb; font-weight: 700; }
+  .expand-arrow.aberto { transform: rotate(90deg); }
+  tr.linha-detalhe td {
+    background: #f8fafc;
+    padding: 14px 16px;
+    border-top: none;
+  }
+  .detalhe-fisica {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .detalhe-fisica label { font-size: 13px; font-weight: 600; color: #333; }
+  .detalhe-fisica input { width: 130px; }
+  .divergencia-ok { color: #157a3d; font-weight: 700; }
+  .divergencia-alerta { color: #c0392b; font-weight: 700; }
 
-}
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+  .truck-card {
+    border: 1px solid #e2e6ec;
+    border-radius: 12px;
+    padding: 16px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .truck-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .truck-card-icon { font-size: 30px; line-height: 1; }
+  .truck-card-placa { font-weight: 800; font-size: 16px; color: #1f2937; }
+  .truck-card-modelo { font-size: 12.5px; color: #666; }
+  .truck-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-top: 1px solid #f0f2f5;
+    font-size: 13.5px;
+  }
+  .truck-card-row label { color: #666; font-weight: 600; white-space: nowrap; }
+  .truck-card-row input, .truck-card-row select {
+    text-align: right;
+    border: 1px solid transparent;
+    background: transparent;
+    font-size: 13.5px;
+    padding: 2px 4px;
+    max-width: 60%;
+  }
+  .truck-card-row input:hover, .truck-card-row select:hover,
+  .truck-card-row input:focus, .truck-card-row select:focus {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    border-radius: 6px;
+  }
+  .truck-card-previsao {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #eff6ff;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .truck-card-previsao.chegada { background: #ecfdf5; }
+  .truck-card-previsao.concluida { background: #f1f5f9; }
+  .truck-card-previsao.cancelada { background: #fef2f2; }
+  .truck-card-previsao input { border: none; background: transparent; font-weight: 700; text-align: right; }
+  .truck-card-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+  }
 
-td{
-
-    padding:10px;
-    border-bottom:1px solid #ddd;
-
-}
-
-tr:hover{
-
-    background:#F8F9F9;
-
-}
-
-.ok{
-
-    color:green;
-    font-weight:bold;
-
-}
-
-.baixo{
-
-    color:red;
-    font-weight:bold;
-
-}
-
+  .permissoes-wrap { display: flex; flex-wrap: wrap; gap: 20px; }
+  .permissoes-categoria {
+    min-width: 220px;
+    background: #f8fafc;
+    border: 1px solid #e2e6ec;
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+  .permissoes-categoria-titulo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 13.5px;
+    color: #1f2937;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e2e6ec;
+  }
+  .permissoes-pagina {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #444;
+    padding: 3px 0 3px 10px;
+  }
+  .permissoes-pagina input, .permissoes-categoria-titulo input {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+  }
 </style>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-
 <body>
 
-<div class="container">
-
-<h2>Saldo de Materiais</h2>
-
-<div class="pesquisa">
-
-<input
-id="pesquisa"
-placeholder="Pesquisar SKU, Descrição ou Localização">
-
-<button onclick="buscar()">
-
-Pesquisar
-
-</button>
-
+<div class="mobile-topbar">
+  <button class="hamburger" id="hamburgerBtn" aria-label="Abrir menu">☰</button>
+  <div class="title">📦 Sistema WMS</div>
 </div>
 
-<table>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-<thead>
+<div class="app-layout">
 
-<tr>
+<aside class="sidebar" id="sidebar">
+  <button class="sidebar-toggle" id="sidebarToggle" title="Expandir/Recolher menu">‹</button>
+  <div class="brand">
+    <h1>📦 <span class="txt">Sistema WMS</span></h1>
+    <div class="subtitle">Cadastros e controle de movimentações</div>
+  </div>
 
-<th>SKU</th>
-<th>Descrição</th>
-<th>Categoria</th>
-<th>Localização</th>
-<th>Estoque Mínimo</th>
-<th>Saldo Atual</th>
-<th>Status</th>
+  <div class="nav-group" id="grupoEstoque">
+    <button class="nav-category" id="toggleEstoque">
+      <span class="cat-left"><span class="ico">📦</span><span class="txt">Estoque</span></span>
+      <span class="cat-arrow">▾</span>
+    </button>
+    <nav id="mainNav">
+      <button data-page="pageMovimentacao" class="active"><span class="ico">🔄</span><span class="txt"> Movimentação</span></button>
+      <button data-page="pageSaldo"><span class="ico">📊</span><span class="txt"> Saldo</span></button>
+      <button data-page="pageHistorico"><span class="ico">🕑</span><span class="txt"> Histórico</span></button>
+      <button data-page="pageEnderecos"><span class="ico">📍</span><span class="txt"> Endereços</span></button>
+      <button data-page="pageMateriais"><span class="ico">🏷️</span><span class="txt"> Materiais</span></button>
+      <button data-page="pageVerificacaoEstoque"><span class="ico">🔍</span><span class="txt"> Verificação de Solicitações</span><span class="nav-badge" id="badgeVerificacaoEstoque">0</span></button>
+      <button data-page="pageApontamentoProducao"><span class="ico">🏭</span><span class="txt"> Apontamento de Material Produzido</span></button>
+      <button data-page="pageAlocacaoPiso"><span class="ico">🅿️</span><span class="txt"> Alocar Material do Piso</span><span class="nav-badge" id="badgeAlocacaoPiso">0</span></button>
+    </nav>
+  </div>
 
-</tr>
+  <div class="nav-group" id="grupoComercial">
+    <button class="nav-category" id="toggleComercial">
+      <span class="cat-left"><span class="ico">💼</span><span class="txt">Comercial</span></span>
+      <span class="cat-arrow">▾</span>
+    </button>
+    <nav id="comercialNav">
+      <button data-page="pageSolicitacaoVerificacao"><span class="ico">📝</span><span class="txt"> Solicitação de verificação de Estoque</span><span class="nav-badge" id="badgeSolicitacaoVerificacao">0</span></button>
+      <button data-page="pageSolicitacaoMaterial"><span class="ico">📦</span><span class="txt"> Solicitação de Separação de Material</span></button>
+    </nav>
+  </div>
 
-</thead>
+  <div class="nav-group" id="grupoExpedicao">
+    <button class="nav-category" id="toggleExpedicao">
+      <span class="cat-left"><span class="ico">🚚</span><span class="txt">Expedição</span></span>
+      <span class="cat-arrow">▾</span>
+    </button>
+    <nav id="expedicaoNav">
+      <button data-page="pageProgramacaoCargas"><span class="ico">📋</span><span class="txt"> Programação</span></button>
+      <button data-page="pageCadastroVeiculos"><span class="ico">🚛</span><span class="txt"> Cadastro de Veículos</span></button>
+      <button data-page="pageViagensProgramadas"><span class="ico">🗺️</span><span class="txt"> Viagens Programadas / Status de Veículo</span></button>
+    </nav>
+  </div>
 
-<tbody id="tabela">
+  <div class="nav-group" id="grupoConfig">
+    <button class="nav-category" id="toggleConfig">
+      <span class="cat-left"><span class="ico">⚙️</span><span class="txt">Configurações</span></span>
+      <span class="cat-arrow">▾</span>
+    </button>
+    <nav id="configNav">
+      <button data-page="pageUsuarios"><span class="ico">👤</span><span class="txt"> Usuários</span></button>
+    </nav>
+  </div>
+</aside>
 
-</tbody>
+<main>
+<datalist id="datalistMateriais"></datalist>
 
-</table>
+
+  <!-- ===================== MOVIMENTAÇÃO ===================== -->
+  <div class="page active" id="pageMovimentacao">
+    <div class="page-title">🔄 Estoque / Movimentação</div>
+    <div class="page-subtitle">Registre entradas e saídas de material por posição</div>
+    <div class="card">
+      <h2>Nova Movimentação</h2>
+      <form class="grid" id="formMov">
+        <div>
+          <label>Usuário</label>
+          <select id="movUsuario" required></select>
+        </div>
+        <div>
+          <label>Endereço (Posição)</label>
+          <select id="movEndereco" required></select>
+        </div>
+        <div>
+          <label>Material</label>
+          <select id="movMaterial" required></select>
+        </div>
+        <div>
+          <label>Tipo</label>
+          <select id="movTipo">
+            <option value="entrada">Entrada</option>
+            <option value="saida">Saída</option>
+          </select>
+        </div>
+        <div>
+          <label>Quantidade</label>
+          <input type="number" id="movQuantidade" min="0.01" step="any" required>
+        </div>
+        <div>
+          <button type="submit" class="btn">Registrar</button>
+        </div>
+      </form>
+      <p id="avisoCadastros" class="empty-msg" style="display:none;">
+        ⚠ Cadastre ao menos um Usuário, um Endereço e um Material antes de registrar movimentações.
+      </p>
+    </div>
+  </div>
+
+  <!-- ===================== SALDO ===================== -->
+  <div class="page" id="pageSaldo">
+    <div class="page-title">📊 Estoque / Saldo</div>
+    <div class="page-subtitle">Saldo consolidado por posição e material</div>
+    <div class="card">
+      <h2>Saldo Atual por Posição / Material</h2>
+      <div class="toolbar">
+        <label class="btn-file">
+          📤 Importar Planilha de Saldo
+          <input type="file" id="inputImportarSaldo" accept=".xlsx,.xls,.csv" onchange="importarPlanilhaSaldo(event)">
+        </label>
+        <button type="button" class="btn btn-file btn-export" onclick="exportarSaldoExcel()">📥 Extrair Saldo (Excel)</button>
+      </div>
+      <p class="toolbar-hint">A planilha de importação deve conter as colunas: <strong>POSIÇÃO, CÓD SKU, DESCRIÇÃO, ENTRADAS, SAÍDAS</strong> (ou SALDO). Endereços e materiais novos são cadastrados automaticamente.</p>
+      <div class="filtro">
+        <input type="text" id="filtroPosicao" placeholder="Filtrar por posição...">
+        <input type="text" id="filtroMaterial" placeholder="Filtrar por material...">
+      </div>
+      <div class="table-wrap">
+      <table id="tabelaSaldo">
+        <thead>
+          <tr><th>Posição</th><th>Material</th><th>Saldo</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgSaldoVazio" class="empty-msg" style="display:none;">Nenhum saldo registrado ainda.</div>
+    </div>
+  </div>
+
+  <!-- ===================== HISTÓRICO ===================== -->
+  <div class="page" id="pageHistorico">
+    <div class="page-title">🕑 Estoque / Histórico</div>
+    <div class="page-subtitle">Todas as movimentações registradas</div>
+    <div class="card">
+      <h2>Histórico de Movimentações</h2>
+      <div class="table-wrap">
+      <table id="tabelaHistorico">
+        <thead>
+          <tr>
+            <th>Data/Hora</th><th>Usuário</th><th>Posição</th><th>Material</th>
+            <th>Tipo</th><th>Quantidade</th><th>Observação</th><th class="actions-col">Ação</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgHistVazio" class="empty-msg" style="display:none;">Nenhuma movimentação registrada ainda.</div>
+    </div>
+  </div>
+
+  <!-- ===================== PROGRAMAÇÃO DE CARGAS (EXPEDIÇÃO) ===================== -->
+  <div class="page" id="pageProgramacaoCargas">
+    <div class="page-title">📋 Expedição / Programação</div>
+    <div class="page-subtitle">Programação de carregamentos — normalmente feita com pelo menos 1 dia de antecedência da viagem factual</div>
+
+    <div class="card">
+      <h2>Nova Carga Programada</h2>
+      <form class="grid" id="formCarga">
+        <div>
+          <label>N° OC (Ordem de Coleta)</label>
+          <input type="text" id="cargaOC" placeholder="Ex: OC-000123" required>
+        </div>
+        <div>
+          <label>Janela de Carregamento</label>
+          <input type="datetime-local" id="cargaJanela" required>
+        </div>
+        <div>
+          <label>Tipo</label>
+          <select id="cargaModalidade">
+            <option value="Dedicado">Dedicado</option>
+            <option value="Fracionado">Fracionado</option>
+          </select>
+        </div>
+        <div>
+          <label>Transportadora</label>
+          <input type="text" id="cargaTransportadora" placeholder="Ex: WP, PRÓPRIA, ou ? se ainda não definida">
+        </div>
+        <div id="campoVeiculoProprioWrap" style="display:none;">
+          <label>Veículo da Frota Própria</label>
+          <select id="cargaVeiculoProprio">
+            <option value="">Selecione...</option>
+          </select>
+        </div>
+        <div>
+          <label>Tipo de Veículo</label>
+          <input type="text" id="cargaTipo" placeholder="Ex: Carreta, Truck, Van">
+        </div>
+        <div>
+          <label>Placa</label>
+          <input type="text" id="cargaPlaca" placeholder="Opcional, se ainda não definida">
+        </div>
+        <div>
+          <button type="submit" class="btn">Programar Carga</button>
+        </div>
+      </form>
+      <p class="toolbar-hint">💡 Recomendado programar a carga com pelo menos <strong>1 dia de antecedência</strong> da viagem factual. Cada carga precisa de uma OC única. Se a Transportadora for <strong>PRÓPRIA</strong>, escolha o veículo da frota cadastrada — a Placa é preenchida automaticamente e validada contra a capacidade de pallets do veículo.</p>
+      <p id="avisoOCDuplicada" class="empty-msg" style="display:none; color:#c0392b;">⚠ Já existe uma carga programada com esse N° OC.</p>
+    </div>
+
+    <div class="card">
+      <h2>Cargas Programadas</h2>
+      <p class="toolbar-hint">Clique em uma carga para ver/adicionar os itens (produto, quantidade, pallets, cliente, destino, NF, janela de entrega e status). Em cargas <strong>Fracionadas</strong>, cada item pode representar uma praça diferente.</p>
+      <div class="table-wrap">
+      <table id="tabelaCargas">
+        <thead>
+          <tr>
+            <th style="width:26px;"></th>
+            <th>N° OC</th>
+            <th>Janela de Carregamento</th>
+            <th>Tipo</th>
+            <th>Transportadora</th>
+            <th>Tipo de Veículo</th>
+            <th>Placa</th>
+            <th>Itens</th>
+            <th>Status da Carga</th>
+            <th class="actions-col" style="width:90px;">Ação</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgCargaVazio" class="empty-msg" style="display:none;">Nenhuma carga programada ainda.</div>
+    </div>
+  </div>
+
+  <!-- ===================== CADASTRO DE VEÍCULOS (EXPEDIÇÃO) ===================== -->
+  <div class="page" id="pageCadastroVeiculos">
+    <div class="page-title">🚛 Expedição / Cadastro de Veículos</div>
+    <div class="page-subtitle">Cadastro da frota utilizada nas viagens de expedição</div>
+    <div class="card">
+      <h2>Cadastro de Veículo</h2>
+      <form class="grid" id="formVeiculo">
+        <div>
+          <label>Placa</label>
+          <input type="text" id="veiPlaca" placeholder="Ex: ABC1D23" required>
+        </div>
+        <div>
+          <label>Modelo / Tipo</label>
+          <input type="text" id="veiModelo" placeholder="Ex: Truck Baú, Carreta, Van">
+        </div>
+        <div>
+          <label>Capacidade (kg)</label>
+          <input type="number" id="veiCapacidade" min="0" step="any" placeholder="Ex: 8000">
+        </div>
+        <div>
+          <label>Capacidade (Pallets)</label>
+          <input type="number" id="veiCapacidadePallets" min="0" step="1" placeholder="Ex: 26">
+        </div>
+        <div>
+          <label>Transportadora</label>
+          <input type="text" id="veiTransportadora" placeholder="Opcional">
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="veiStatus">
+            <option value="Disponível">Disponível</option>
+            <option value="Em Viagem">Em Viagem</option>
+            <option value="Manutenção">Manutenção</option>
+            <option value="Indisponível">Indisponível</option>
+          </select>
+        </div>
+        <div>
+          <label>Observação</label>
+          <input type="text" id="veiObservacao" placeholder="Opcional">
+        </div>
+        <div>
+          <button type="submit" class="btn">Cadastrar Veículo</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Veículos Cadastrados</h2>
+      <div class="table-wrap">
+      <table id="tabelaVeiculos">
+        <thead>
+          <tr>
+            <th>Placa</th><th>Modelo / Tipo</th><th>Capacidade (kg)</th><th>Capacidade (Pallets)</th>
+            <th>Transportadora</th><th>Status</th><th>Observação</th>
+            <th class="actions-col">Ação</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgVeiculoVazio" class="empty-msg" style="display:none;">Nenhum veículo cadastrado ainda.</div>
+    </div>
+  </div>
+
+  <!-- ===================== VIAGENS PROGRAMADAS / STATUS DE VEÍCULO (EXPEDIÇÃO) ===================== -->
+  <div class="page" id="pageViagensProgramadas">
+    <div class="page-title">🗺️ Expedição / Viagens Programadas / Status de Veículo</div>
+    <div class="page-subtitle">Viagens geradas a partir da Programação de Cargas — acompanhamento de motorista, veículo e previsão de saída/chegada</div>
+    <div class="card">
+      <h2>Viagens Programadas</h2>
+      <p class="toolbar-hint">Viagens são criadas automaticamente ao converter uma carga em <em>Expedição → Programação</em>. Aqui você acompanha e atualiza motorista, previsão e status.</p>
+      <div id="gridViagens" class="cards-grid"></div>
+      <div id="msgViagemVazio" class="empty-msg" style="display:none;">Nenhuma viagem programada ainda.</div>
+    </div>
+    <div class="card">
+      <h2>Status Atual da Frota</h2>
+      <div class="table-wrap">
+      <table id="tabelaStatusFrota">
+        <thead>
+          <tr><th>Placa</th><th>Modelo / Tipo</th><th>Capacidade (kg)</th><th>Status Atual</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgStatusFrotaVazio" class="empty-msg" style="display:none;">Nenhum veículo cadastrado ainda.</div>
+    </div>
+  </div>
+
+  <!-- ===================== USUÁRIOS ===================== -->
+  <div class="page" id="pageUsuarios">
+    <div class="page-title">👤 Configurações / Usuários</div>
+    <div class="page-subtitle">Cadastro de usuários e controle de acesso por módulo — as permissões aqui servem de referência para configurar depois no Supabase</div>
+    <div class="card">
+      <h2>Cadastro de Usuários</h2>
+      <form class="grid" id="formUsuario">
+        <div>
+          <label>Nome</label>
+          <input type="text" id="usuNome" placeholder="Ex: João Silva" required>
+        </div>
+        <div>
+          <label>Matrícula / Login</label>
+          <input type="text" id="usuMatricula" placeholder="Ex: 00123" required>
+        </div>
+        <div>
+          <label>Cargo</label>
+          <select id="usuCargo">
+            <option value="Administrador">Administrador</option>
+            <option value="Usuário" selected>Usuário</option>
+            <option value="Consultor">Consultor</option>
+          </select>
+        </div>
+        <div>
+          <button type="submit" class="btn">Cadastrar Usuário</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Usuários Cadastrados</h2>
+      <p class="toolbar-hint">Clique em um usuário para ver/ajustar quais módulos do sistema ele pode acessar.</p>
+      <div class="table-wrap">
+      <table id="tabelaUsuarios">
+        <thead><tr>
+          <th style="width:26px;"></th>
+          <th>Matrícula</th><th>Nome</th><th>Cargo</th>
+          <th class="actions-col">Ação</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgUsuVazio" class="empty-msg" style="display:none;">Nenhum usuário cadastrado ainda.</div>
+    </div>
+  </div>
+
+  <!-- ===================== ENDEREÇOS ===================== -->
+  <div class="page" id="pageEnderecos">
+    <div class="page-title">📍 Estoque / Endereços</div>
+    <div class="page-subtitle">Cadastro de posições/endereços de armazenagem</div>
+    <div class="card">
+      <h2>Cadastro de Endereços (Posições)</h2>
+      <div class="toolbar">
+        <label class="btn-file">
+          📤 Importar Planilha de Endereços
+          <input type="file" id="inputImportarEnderecos" accept=".xlsx,.xls,.csv" onchange="importarPlanilhaEnderecos(event)">
+        </label>
+      </div>
+      <p class="toolbar-hint">A planilha de importação deve conter as colunas: <strong>POSIÇÃO, RUA, BLOCO, NÍVEL, CAPACIDADE KG, STATUS, OBSERVAÇÃO</strong>. Endereços já existentes (mesma posição) são atualizados.</p>
+      <form class="grid" id="formEndereco">
+        <div>
+          <label>Código do Endereço (Posição)</label>
+          <input type="text" id="endCodigo" placeholder="Ex: AC-001-10" required>
+        </div>
+        <div>
+          <label>Rua</label>
+          <input type="text" id="endRua" placeholder="Ex: C">
+        </div>
+        <div>
+          <label>Bloco</label>
+          <input type="text" id="endBloco" placeholder="Ex: 01">
+        </div>
+        <div>
+          <label>Nível</label>
+          <input type="text" id="endNivel" placeholder="Ex: 10">
+        </div>
+        <div>
+          <label>Capacidade (kg)</label>
+          <input type="number" id="endCapacidade" min="0" step="any" placeholder="Ex: 500">
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="endStatus">
+            <option value="LIVRE">LIVRE</option>
+            <option value="OCUPADO">OCUPADO</option>
+            <option value="BLOQUEADO">BLOQUEADO</option>
+          </select>
+        </div>
+        <div>
+          <label>Observação</label>
+          <input type="text" id="endObservacao" placeholder="Opcional">
+        </div>
+        <div>
+          <button type="submit" class="btn">Cadastrar Endereço</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Endereços Cadastrados</h2>
+      <div class="table-wrap">
+      <table id="tabelaEnderecos">
+        <thead><tr>
+          <th>Posição</th><th>Rua</th><th>Bloco</th><th>Nível</th>
+          <th>Capacidade (kg)</th><th>Status</th><th>Observação</th>
+          <th class="actions-col">Ação</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgEndVazio" class="empty-msg" style="display:none;">Nenhum endereço cadastrado ainda.</div>
+    </div>
+  </div>
+
+  <!-- ===================== MATERIAIS ===================== -->
+  <div class="page" id="pageMateriais">
+    <div class="page-title">🏷️ Estoque / Materiais</div>
+    <div class="page-subtitle">Cadastro de materiais (código e descrição)</div>
+
+    <div class="card">
+      <h2>Importar Planilhas de Material</h2>
+      <div class="toolbar">
+        <label class="btn-file">
+          📤 Importar Cadastro de SKU
+          <input type="file" id="inputImportarSKU" accept=".xlsx,.xls,.csv" onchange="importarPlanilhaCadastroSKU(event)">
+        </label>
+        <label class="btn-file">
+          📤 Importar Padrão de Paletização
+          <input type="file" id="inputImportarPaletizacao" accept=".xlsx,.xls,.csv" onchange="importarPlanilhaPaletizacao(event)">
+        </label>
+      </div>
+      <p class="toolbar-hint">
+        <strong>Cadastro de SKU:</strong> Cód SKU, Descrição, Família, Unidade, Estoque Mín., Estoque Máx., Peso Padrão, Ativo.<br>
+        <strong>Padrão de Paletização:</strong> Cod. Produto, Qtd. por PCT, Amarração, Qtd. Altura, Qtd. PCT por Pallet, Qtd. Total.<br>
+        As duas planilhas se complementam pelo código do material — pode subir em qualquer ordem, os dados existentes não são apagados.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Cadastro de Materiais</h2>
+      <form class="grid" id="formMaterial">
+        <div>
+          <label>Código</label>
+          <input type="text" id="matCodigo" placeholder="Ex: MAT-001" required>
+        </div>
+        <div>
+          <label>Descrição</label>
+          <input type="text" id="matDescricao" placeholder="Ex: Parafuso M6x20" required>
+        </div>
+        <div>
+          <label>Peso Unitário / Padrão (kg)</label>
+          <input type="number" id="matPesoUnitario" min="0" step="any" placeholder="Ex: 0.05">
+        </div>
+        <div>
+          <button type="submit" class="btn">Cadastrar Material</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Materiais Cadastrados</h2>
+      <div class="table-wrap">
+      <table id="tabelaMateriais">
+        <thead><tr>
+          <th>Código</th><th>Descrição</th><th>Família</th><th>Unidade</th>
+          <th>Estoque Mín.</th><th>Estoque Máx.</th><th>Peso Padrão (kg)</th><th>Ativo</th>
+          <th>Peças/PCT</th><th>Peso Pacote (kg)</th><th>Amarração</th><th>Qtd. Altura</th>
+          <th>Qtd. PCT/Pallet</th><th>Qtd. Total PC</th>
+          <th class="actions-col">Ação</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgMatVazio" class="empty-msg" style="display:none;">Nenhum material cadastrado ainda.</div>
+    </div>
+  </div>
+
+  <!-- ===================== VERIFICAÇÃO DE SOLICITAÇÕES (ESTOQUE) ===================== -->
+  <div class="page" id="pageVerificacaoEstoque">
+    <div class="page-title">🔍 Estoque / Verificação de Solicitações</div>
+    <div class="page-subtitle">Solicitações abertas pelo time Comercial aguardando verificação de saldo</div>
+    <div class="card">
+      <h2>Solicitações em Aberto</h2>
+      <div class="table-wrap">
+      <table id="tabelaVerificacaoEstoque">
+        <thead>
+          <tr>
+            <th>N° Pedido</th>
+            <th>Código</th>
+            <th>Descrição</th>
+            <th>Qtd. Solicitada</th>
+            <th>Data de Solicitação</th>
+            <th>Status</th>
+            <th>Qtd. Disponível</th>
+            <th class="actions-col" style="width:120px;">Ação</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgVerificacaoVazio" class="empty-msg" style="display:none;">Nenhuma solicitação aguardando verificação no momento.</div>
+    </div>
+  </div>
+
+  <!-- ===================== APONTAMENTO DE MATERIAL PRODUZIDO (ESTOQUE) ===================== -->
+  <div class="page" id="pageApontamentoProducao">
+    <div class="page-title">🏭 Estoque / Apontamento de Material Produzido</div>
+    <div class="page-subtitle">Apontamento por turno/máquina/OP — cada registro gera entrada em estoque</div>
+
+    <div class="card">
+      <h2>Importar Planilha de Apontamento</h2>
+      <div class="toolbar">
+        <label class="btn-file">
+          📤 Importar Planilha de Apontamento
+          <input type="file" id="inputImportarApontamento" accept=".xlsx,.xls,.csv" onchange="importarPlanilhaApontamento(event)">
+        </label>
+      </div>
+      <p class="toolbar-hint">
+        Colunas esperadas: <strong>Máquina, Status, Nº OP, Nº Pedido, Cód. Produto, Descrição Produto, Qtd Produzida no Turno,
+        Qtd da OP, Tipo de Embalagem, Especificação Caixa, Qtd na Embalagem, Peso por Volume [Kg], Observações</strong>.
+        Produtos/pedidos novos são cadastrados automaticamente. Todo material apontado entra em <strong>🅿️ PISO (Stand By)</strong>
+        e só é considerado disponível numa posição depois de alocado em <em>Estoque → Alocar Material do Piso</em>.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Produções Aguardando Apontamento</h2>
+      <div class="table-wrap">
+      <table id="tabelaApontamentoPendente">
+        <thead>
+          <tr>
+            <th>N° Pedido</th>
+            <th>Cód. Produto</th>
+            <th>Descrição Produto</th>
+            <th>Produzido Acum.</th>
+            <th>Qtd. da OP</th>
+            <th>Saldo a Produzir</th>
+            <th>% Conclusão</th>
+            <th>Máquina</th>
+            <th>Status</th>
+            <th>N° OP</th>
+            <th>Qtd. Produzida no Turno</th>
+            <th>Tipo de Embalagem</th>
+            <th>Especificação Caixa</th>
+            <th>Qtd. na Embalagem</th>
+            <th>Peso por Volume (kg)</th>
+            <th>Observações</th>
+            <th>Responsável</th>
+            <th class="actions-col" style="width:120px;">Ação</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <p class="toolbar-hint">🅿️ Todo apontamento entra automaticamente em <strong>PISO (Stand By)</strong> — aloque depois em <em>Alocar Material do Piso</em>.</p>
+      <div id="msgApontamentoPendenteVazio" class="empty-msg" style="display:none;">Nenhuma produção aguardando apontamento no momento.</div>
+      <p id="avisoApontamentoCadastros" class="empty-msg" style="display:none;">
+        ⚠ Cadastre ao menos um Usuário antes de apontar material produzido.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Apontamentos por Turno (Histórico)</h2>
+      <p class="toolbar-hint">Clique em uma linha para conferir a <strong>Qtde Apontada Física</strong> e registrar eventuais divergências.</p>
+      <div class="table-wrap">
+      <table id="tabelaApontamentoRealizado">
+        <thead>
+          <tr>
+            <th style="width:26px;"></th>
+            <th>Data/Hora</th>
+            <th>N° Pedido</th>
+            <th>Cód. Produto</th>
+            <th>Descrição Produto</th>
+            <th>Máquina</th>
+            <th>Status</th>
+            <th>N° OP</th>
+            <th>Qtd. Sistema (Turno)</th>
+            <th>Qtd. Física</th>
+            <th>Divergência</th>
+            <th>Qtd. da OP</th>
+            <th>Produção Total da OP</th>
+            <th>Saldo à Produzir</th>
+            <th>% Conclusão</th>
+            <th>Tipo de Embalagem</th>
+            <th>Especificação Caixa</th>
+            <th>Qtd. na Embalagem</th>
+            <th>Peso por Volume (kg)</th>
+            <th>Observações</th>
+            <th>Endereço</th>
+            <th>Responsável</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgApontamentoRealizadoVazio" class="empty-msg" style="display:none;">Nenhum apontamento realizado ainda.</div>
+    </div>
+  </div>
+
+  <!-- ===================== ALOCAR MATERIAL DO PISO (ESTOQUE) ===================== -->
+  <div class="page" id="pageAlocacaoPiso">
+    <div class="page-title">🅿️ Estoque / Alocar Material do Piso</div>
+    <div class="page-subtitle">Material apontado fica em PISO (Stand By) até ser efetivamente disposto numa posição definitiva</div>
+    <div class="card">
+      <h2>Material em Piso (Stand By)</h2>
+      <div class="table-wrap">
+      <table id="tabelaAlocacaoPiso">
+        <thead>
+          <tr>
+            <th>Cód. Material</th>
+            <th>Descrição</th>
+            <th>Qtd. em Piso</th>
+            <th>Qtd. a Alocar</th>
+            <th>Endereço de Destino</th>
+            <th>Responsável</th>
+            <th class="actions-col" style="width:120px;">Ação</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgAlocacaoPisoVazio" class="empty-msg" style="display:none;">Nenhum material em piso aguardando alocação no momento.</div>
+      <p id="avisoAlocacaoPisoCadastros" class="empty-msg" style="display:none;">
+        ⚠ Cadastre ao menos um Endereço e um Usuário para poder alocar material do piso.
+      </p>
+    </div>
+  </div>
+
+  <!-- ===================== SOLICITAÇÃO DE VERIFICAÇÃO DE ESTOQUE (COMERCIAL) ===================== -->
+  <div class="page" id="pageSolicitacaoVerificacao">
+    <div class="page-title">📝 Comercial / Solicitação de verificação de Estoque</div>
+    <div class="page-subtitle">Formulário para o time comercial solicitar verificação de saldo em estoque</div>
+
+    <div class="card">
+      <h2>Nova Solicitação</h2>
+      <form class="grid" id="formSolicitacao">
+        <div>
+          <label>N° Pedido</label>
+          <input type="text" id="solNumeroPedido" placeholder="Ex: 10023" required>
+        </div>
+        <div>
+          <label>Código de Material</label>
+          <select id="solCodigoMaterial" required></select>
+        </div>
+        <div>
+          <label>Descrição</label>
+          <input type="text" id="solDescricao" placeholder="Preenchido automaticamente" readonly>
+        </div>
+        <div>
+          <label>Quantidade Solicitada</label>
+          <input type="number" id="solQuantidadeSolicitada" min="0.01" step="any" placeholder="Ex: 50" required>
+        </div>
+        <div>
+          <label>Data de Solicitação</label>
+          <input type="date" id="solDataSolicitacao" required>
+        </div>
+        <div>
+          <label>Status</label>
+          <input type="text" id="solStatus" value="Aberta" readonly>
+        </div>
+        <div>
+          <button type="submit" class="btn">Registrar Solicitação</button>
+        </div>
+      </form>
+      <p id="avisoSolicitacaoMateriais" class="empty-msg" style="display:none;">
+        ⚠ Cadastre ao menos um Material (aba Estoque → Materiais) antes de criar uma solicitação.
+      </p>
+      <p id="contadorLimiteSolicitacao" class="empty-msg" style="display:none; background:#eff6ff; border-color:#93c5fd; color:#1e40af;">
+        📊 <span id="txtContadorLimite"></span>
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Solicitações Abertas</h2>
+      <div class="table-wrap">
+      <table id="tabelaSolicitacoes">
+        <thead>
+          <tr>
+            <th>N° Pedido</th>
+            <th>Código</th>
+            <th>Descrição</th>
+            <th>Qtd. Solicitada</th>
+            <th>Data de Solicitação</th>
+            <th>Status</th>
+            <th class="actions-col" style="width:140px;">Ação</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgSolicitacaoVazio" class="empty-msg" style="display:none;">Nenhuma solicitação em aberto no momento.</div>
+    </div>
+
+    <div class="card">
+      <h2>Fila de Espera</h2>
+      <div class="table-wrap">
+      <table id="tabelaFilaSolicitacoes">
+        <thead>
+          <tr>
+            <th>Posição</th>
+            <th>N° Pedido</th>
+            <th>Código</th>
+            <th>Descrição</th>
+            <th>Qtd. Solicitada</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgFilaVazio" class="empty-msg" style="display:none;">Nenhuma solicitação em fila de espera no momento.</div>
+    </div>
+
+    <div class="card">
+      <h2>Solicitações Verificadas</h2>
+      <div class="table-wrap">
+      <table id="tabelaSolicitacoesVerificadas">
+        <thead>
+          <tr>
+            <th>N° Pedido</th>
+            <th>Código</th>
+            <th>Descrição</th>
+            <th>Qtd. Solicitada</th>
+            <th>Qtd. Disponível</th>
+            <th>Data de Solicitação</th>
+            <th>Status</th>
+            <th class="actions-col" style="width:150px;">Ação</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgSolicitacaoVerificadaVazio" class="empty-msg" style="display:none;">Nenhuma solicitação verificada ainda.</div>
+    </div>
+  </div>
+
+  <!-- ===================== SOLICITAÇÃO DE MATERIAL (COMERCIAL) ===================== -->
+  <div class="page" id="pageSolicitacaoMaterial">
+    <div class="page-title">📦 Comercial / Solicitação de Separação de Material</div>
+    <div class="page-subtitle">Solicite a separação de material informando código e quantidade; peso estimado calculado automaticamente</div>
+    <div class="card">
+      <h2>Nova Solicitação de Separação de Material</h2>
+      <form class="grid" id="formSolicitacaoMaterial">
+        <div>
+          <label>Código</label>
+          <select id="solMatCodigoMaterial" required>
+            <option value="">Selecione...</option>
+          </select>
+        </div>
+        <div>
+          <label>Descrição</label>
+          <input type="text" id="solMatDescricao" placeholder="Preenchido automaticamente" readonly>
+        </div>
+        <div>
+          <label>Quantidade (Unidades)</label>
+          <input type="number" id="solMatQuantidade" min="0.01" step="any" placeholder="Ex: 100" required>
+        </div>
+        <div>
+          <label>Peso Estimado (kg)</label>
+          <input type="text" id="solMatPesoEstimado" placeholder="Calculado automaticamente" readonly>
+        </div>
+        <div>
+          <label>Data da Solicitação</label>
+          <input type="date" id="solMatData" required>
+        </div>
+        <div>
+          <button type="submit" class="btn">Registrar Solicitação</button>
+        </div>
+      </form>
+      <p id="avisoSolicitacaoMaterialMateriais" class="empty-msg" style="display:none;">
+        ⚠ Cadastre ao menos um Material (aba Estoque → Materiais) antes de criar uma solicitação.
+      </p>
+    </div>
+    <div class="card">
+      <h2>Solicitações de Separação de Material Registradas</h2>
+      <div class="table-wrap">
+      <table id="tabelaSolicitacoesMaterial">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Descrição</th>
+            <th>Quantidade (Un.)</th>
+            <th>Peso Estimado (kg)</th>
+            <th>Data</th>
+            <th class="actions-col">Ação</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgSolicitacaoMaterialVazio" class="empty-msg" style="display:none;">Nenhuma solicitação de material registrada ainda.</div>
+    </div>
+  </div>
+
+</main>
 
 </div>
 
 <script>
+  // ============== ESTADO EM MEMÓRIA ==============
+  let usuarios = [];      // { id, matricula, nome }
+  let veiculos = [];      // { id, placa, modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao }
+  let cargasProgramadas = []; // { id, numeroOC, janelaCarregamento, modalidade, transportadora, tipoVeiculo, placa, veiculoId, status }
+  let itensCarga = [];         // { id, cargaId, item, quantidade, quantidadePallets, cliente, destino, nf, janelaEntrega, status }
+  let viagens = [];       // { id, veiculoId, motorista, dataHora, previsaoChegada, origem, destino, status, observacoes }
+  let enderecos = [];     // { id, codigo, rua, bloco, nivel, capacidadeKg, status, observacao, descricao }
+  let materiais = [];     // { id, codigo, descricao, pesoUnitarioKg, familia, unidade, estoqueMinimo, estoqueMaximo, ativo, pecasPorPct, pesoPacoteKg, amarracao, qtdAltura, qtdPctPorPallet, fracaoPct, totalPct, qtdTotalPc }
+  let movimentacoes = []; // { id, dataHora, usuarioId, enderecoId, materialId, tipo, quantidade, observacao }
+  let solicitacoes = [];  // { id, numeroPedido, materialId, dataSolicitacao, status }
+  let producoes = [];     // { id, numeroPedidoRef, materialId, quantidadeSolicitada, quantidadeDisponivel, quantidadeProduzir, dataGeracao, status }
+  let filaSolicitacoes = []; // { id, numeroPedido, materialId, quantidadeSolicitada, dataEntradaFila, status: 'Em fila' }
+  let solicitacoesMaterial = []; // { id, materialId, quantidade, pesoEstimado, data }
+  let apontamentosProducao = []; // { id, producaoId, dataHora, maquina, statusMaquina, numeroOP, qtdProduzidaTurno, qtdDaOP, tipoEmbalagem, especificacaoCaixa, qtdNaEmbalagem, pesoPorVolumeKg, observacoes, enderecoId, usuarioId, movimentacaoId, qtdApontadaFisica, divergencia }
+  const LIMITE_SOLICITACOES_ABERTAS = 3;
+  let ultimoDiaVerificado = new Date().toDateString();
 
-//============================
-// CONFIGURAÇÃO SUPABASE
-//============================
+  // ============== NAVEGAÇÃO ==============
+  const navButtons = document.querySelectorAll('#mainNav button, #comercialNav button, #configNav button, #expedicaoNav button');
+  navButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      navButtons.forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.page).classList.add('active');
+      fecharMenuMobile();
+    });
+  });
 
-const SUPABASE_URL="https://SEU-PROJETO.supabase.co";
+  // ============== MENU MOBILE (drawer com hambúrguer) ==============
+  const sidebar = document.getElementById('sidebar');
+  const hamburgerBtn = document.getElementById('hamburgerBtn');
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
 
-const SUPABASE_KEY="SUA_CHAVE_ANON";
+  function abrirMenuMobile() {
+    sidebar.classList.add('mobile-open');
+    sidebarOverlay.classList.add('active');
+  }
+  function fecharMenuMobile() {
+    sidebar.classList.remove('mobile-open');
+    sidebarOverlay.classList.remove('active');
+  }
+  hamburgerBtn.addEventListener('click', () => {
+    if (sidebar.classList.contains('mobile-open')) {
+      fecharMenuMobile();
+    } else {
+      abrirMenuMobile();
+    }
+  });
+  sidebarOverlay.addEventListener('click', fecharMenuMobile);
 
-const supabase = window.supabase.createClient(
-SUPABASE_URL,
-SUPABASE_KEY
-);
+  // ============== MENU EXPANSÍVEL (sidebar mini / expandida) ==============
+  const sidebarToggle = document.getElementById('sidebarToggle');
+  sidebarToggle.addEventListener('click', () => {
+    sidebar.classList.toggle('mini');
+    // ao minimizar a sidebar inteira, garante que as categorias fiquem "abertas"
+    if (sidebar.classList.contains('mini')) {
+      document.getElementById('grupoEstoque').classList.remove('collapsed');
+      document.getElementById('grupoComercial').classList.remove('collapsed');
+      document.getElementById('grupoExpedicao').classList.remove('collapsed');
+      document.getElementById('grupoConfig').classList.remove('collapsed');
+    }
+  });
 
-//============================
-// CARREGA TODOS
-//============================
+  // ============== CATEGORIA "ESTOQUE" EXPANSÍVEL (accordion) ==============
+  const toggleEstoque = document.getElementById('toggleEstoque');
+  const grupoEstoque = document.getElementById('grupoEstoque');
+  toggleEstoque.addEventListener('click', () => {
+    if (sidebar.classList.contains('mini')) return; // no modo mini não recolhe a categoria
+    grupoEstoque.classList.toggle('collapsed');
+  });
 
-async function carregar(){
+  // ============== CATEGORIA "COMERCIAL" EXPANSÍVEL (accordion) ==============
+  const toggleComercial = document.getElementById('toggleComercial');
+  const grupoComercial = document.getElementById('grupoComercial');
+  toggleComercial.addEventListener('click', () => {
+    if (sidebar.classList.contains('mini')) return;
+    grupoComercial.classList.toggle('collapsed');
+  });
 
-const {data,error}=await supabase
+  // ============== CATEGORIA "EXPEDIÇÃO" EXPANSÍVEL (accordion) ==============
+  const toggleExpedicao = document.getElementById('toggleExpedicao');
+  const grupoExpedicao = document.getElementById('grupoExpedicao');
+  toggleExpedicao.addEventListener('click', () => {
+    if (sidebar.classList.contains('mini')) return;
+    grupoExpedicao.classList.toggle('collapsed');
+  });
 
-.from("materiais")
+  // ============== CATEGORIA "CONFIGURAÇÕES" EXPANSÍVEL (accordion) ==============
+  const toggleConfig = document.getElementById('toggleConfig');
+  const grupoConfig = document.getElementById('grupoConfig');
+  toggleConfig.addEventListener('click', () => {
+    if (sidebar.classList.contains('mini')) return;
+    grupoConfig.classList.toggle('collapsed');
+  });
 
-.select("*")
+  // ============== USUÁRIOS ==============
 
-.order("descricao");
+  // Estrutura de módulos do sistema, espelhando a hierarquia da sidebar (categoria > página).
+  // Usada para montar a árvore de permissões de cada usuário.
+  const MODULOS_SISTEMA = [
+    { categoria: 'Estoque', chave: 'estoque', paginas: [
+        { chave: 'movimentacao', label: 'Movimentação' },
+        { chave: 'saldo', label: 'Saldo' },
+        { chave: 'historico', label: 'Histórico' },
+        { chave: 'enderecos', label: 'Endereços' },
+        { chave: 'materiais', label: 'Materiais' },
+        { chave: 'verificacaoEstoque', label: 'Verificação de Solicitações' },
+        { chave: 'apontamentoProducao', label: 'Apontamento de Material Produzido' },
+        { chave: 'alocacaoPiso', label: 'Alocar Material do Piso' }
+    ]},
+    { categoria: 'Comercial', chave: 'comercial', paginas: [
+        { chave: 'solicitacaoVerificacao', label: 'Solicitação de verificação de Estoque' },
+        { chave: 'solicitacaoMaterial', label: 'Solicitação de Separação de Material' }
+    ]},
+    { categoria: 'Expedição', chave: 'expedicao', paginas: [
+        { chave: 'programacao', label: 'Programação' },
+        { chave: 'cadastroVeiculos', label: 'Cadastro de Veículos' },
+        { chave: 'viagensProgramadas', label: 'Viagens Programadas / Status de Veículo' }
+    ]},
+    { categoria: 'Configurações', chave: 'configuracoes', paginas: [
+        { chave: 'usuarios', label: 'Usuários' }
+    ]}
+  ];
 
-if(error){
+  // Permissões padrão sugeridas por cargo (ajustável manualmente depois, linha por linha)
+  function gerarPermissoesPadrao(cargo) {
+    const permissoes = {};
+    MODULOS_SISTEMA.forEach(cat => {
+      permissoes[cat.chave] = {};
+      cat.paginas.forEach(p => {
+        let valor = true;
+        if (cargo === 'Usuário' && cat.chave === 'configuracoes') valor = false;
+        permissoes[cat.chave][p.chave] = valor;
+      });
+    });
+    return permissoes;
+  }
 
-alert(error.message);
+  const formUsuario = document.getElementById('formUsuario');
+  formUsuario.addEventListener('submit', e => {
+    e.preventDefault();
+    const nome = document.getElementById('usuNome').value.trim();
+    const matricula = document.getElementById('usuMatricula').value.trim();
+    const cargo = document.getElementById('usuCargo').value;
+    if (!nome || !matricula) return;
+    usuarios.push({
+      id: Date.now() + Math.random(),
+      nome,
+      matricula,
+      cargo,
+      permissoes: gerarPermissoesPadrao(cargo)
+    });
+    formUsuario.reset();
+    document.getElementById('usuCargo').value = 'Usuário';
+    renderTudo();
+  });
 
-return;
+  function removerUsuario(id) {
+    usuarios = usuarios.filter(u => u.id !== id);
+    renderTudo();
+  }
 
-}
+  function reabrirDetalheUsuario(id) {
+    setTimeout(() => {
+      const linha = document.getElementById('detalhe_' + id);
+      if (linha) linha.style.display = 'table-row';
+      const seta = document.getElementById('seta_' + id);
+      if (seta) seta.classList.add('aberto');
+    }, 0);
+  }
 
-preencher(data);
+  // Liga/desliga todas as páginas de uma categoria de uma vez
+  function alternarPermissaoCategoria(usuarioId, categoriaChave, valor) {
+    const usuario = usuarios.find(u => String(u.id) === String(usuarioId));
+    if (!usuario) return;
+    if (!usuario.permissoes) usuario.permissoes = gerarPermissoesPadrao(usuario.cargo);
+    const categoria = MODULOS_SISTEMA.find(c => c.chave === categoriaChave);
+    categoria.paginas.forEach(p => { usuario.permissoes[categoriaChave][p.chave] = valor; });
+    renderTudo();
+    reabrirDetalheUsuario(usuarioId);
+  }
 
-}
+  // Liga/desliga uma página específica dentro de uma categoria
+  function alternarPermissaoPagina(usuarioId, categoriaChave, paginaChave, valor) {
+    const usuario = usuarios.find(u => String(u.id) === String(usuarioId));
+    if (!usuario) return;
+    if (!usuario.permissoes) usuario.permissoes = gerarPermissoesPadrao(usuario.cargo);
+    usuario.permissoes[categoriaChave][paginaChave] = valor;
+    renderTudo();
+    reabrirDetalheUsuario(usuarioId);
+  }
 
-//============================
-// PESQUISA
-//============================
+  function atualizarCargoUsuario(usuarioId, novoCargo) {
+    const usuario = usuarios.find(u => String(u.id) === String(usuarioId));
+    if (!usuario) return;
+    usuario.cargo = novoCargo;
+    renderTudo();
+    reabrirDetalheUsuario(usuarioId);
+  }
 
-async function buscar(){
+  function renderUsuarios() {
+    const tbody = document.querySelector('#tabelaUsuarios tbody');
+    const msg = document.getElementById('msgUsuVazio');
+    tbody.innerHTML = '';
+    if (usuarios.length === 0) {
+      msg.style.display = 'block';
+      document.getElementById('tabelaUsuarios').style.display = 'none';
+      return;
+    }
+    msg.style.display = 'none';
+    document.getElementById('tabelaUsuarios').style.display = 'table';
 
-let texto=document.getElementById("pesquisa").value;
+    usuarios.forEach(u => {
+      if (!u.permissoes) { u.cargo = u.cargo || 'Usuário'; u.permissoes = gerarPermissoesPadrao(u.cargo); }
 
-if(texto==""){
+      const tr = document.createElement('tr');
+      tr.className = 'linha-expansivel';
+      tr.setAttribute('onclick', `toggleDetalheApontamento('${u.id}')`);
+      tr.innerHTML = `
+        <td><span class="expand-arrow" id="seta_${u.id}">▸</span></td>
+        <td><span class="badge">${u.matricula}</span></td>
+        <td>${u.nome}</td>
+        <td>${u.cargo || 'Usuário'}</td>
+        <td class="actions-col"><button class="btn danger" onclick="event.stopPropagation(); removerUsuario(${u.id})">✕</button></td>
+      `;
+      tbody.appendChild(tr);
 
-carregar();
+      const trDetalhe = document.createElement('tr');
+      trDetalhe.className = 'linha-detalhe';
+      trDetalhe.id = 'detalhe_' + u.id;
+      trDetalhe.style.display = 'none';
 
-return;
+      const blocosCategorias = MODULOS_SISTEMA.map(cat => {
+        const paginasHtml = cat.paginas.map(p => `
+          <label class="permissoes-pagina">
+            <input type="checkbox" ${u.permissoes[cat.chave][p.chave] ? 'checked' : ''}
+              onchange="alternarPermissaoPagina('${u.id}', '${cat.chave}', '${p.chave}', this.checked)">
+            ${p.label}
+          </label>
+        `).join('');
 
-}
+        const todasMarcadas = cat.paginas.every(p => u.permissoes[cat.chave][p.chave]);
 
-const {data,error}=await supabase
+        return `
+          <div class="permissoes-categoria">
+            <label class="permissoes-categoria-titulo">
+              <input type="checkbox" ${todasMarcadas ? 'checked' : ''}
+                onchange="alternarPermissaoCategoria('${u.id}', '${cat.chave}', this.checked)">
+              ${cat.categoria}
+            </label>
+            ${paginasHtml}
+          </div>
+        `;
+      }).join('');
 
-.from("materiais")
+      trDetalhe.innerHTML = `
+        <td colspan="5">
+          <div onclick="event.stopPropagation();">
+            <div class="truck-card-row" style="border-top:none; padding-top:0;">
+              <label>Cargo</label>
+              <select onchange="atualizarCargoUsuario('${u.id}', this.value)">
+                <option value="Administrador" ${u.cargo === 'Administrador' ? 'selected' : ''}>Administrador</option>
+                <option value="Usuário" ${u.cargo === 'Usuário' ? 'selected' : ''}>Usuário</option>
+                <option value="Consultor" ${u.cargo === 'Consultor' ? 'selected' : ''}>Consultor</option>
+              </select>
+            </div>
+            <p class="toolbar-hint">Marque os módulos que ${u.nome.split(' ')[0]} pode acessar. Isso serve como referência — a aplicação real das permissões será feita via políticas de RLS no Supabase.</p>
+            <div class="permissoes-wrap">${blocosCategorias}</div>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(trDetalhe);
+    });
+  }
 
-.select("*")
+  // ============== EXPEDIÇÃO > PROGRAMAÇÃO DE CARGAS ==============
+  const formCarga = document.getElementById('formCarga');
+  const cargaTransportadoraInput = document.getElementById('cargaTransportadora');
+  const campoVeiculoProprioWrap = document.getElementById('campoVeiculoProprioWrap');
+  const cargaVeiculoProprioSelect = document.getElementById('cargaVeiculoProprio');
+  const cargaTipoInput = document.getElementById('cargaTipo');
+  const cargaPlacaInput = document.getElementById('cargaPlaca');
 
-.or(
+  // Quando a Transportadora digitada for "PRÓPRIA", mostra o select com os veículos da frota cadastrada
+  function atualizarCampoVeiculoProprio() {
+    const ehPropria = cargaTransportadoraInput.value.trim().toUpperCase() === 'PRÓPRIA' ||
+                       cargaTransportadoraInput.value.trim().toUpperCase() === 'PROPRIA';
+    campoVeiculoProprioWrap.style.display = ehPropria ? 'block' : 'none';
+    if (!ehPropria) {
+      cargaVeiculoProprioSelect.value = '';
+      cargaPlacaInput.readOnly = false;
+      cargaTipoInput.readOnly = false;
+    }
+  }
+  cargaTransportadoraInput.addEventListener('input', atualizarCampoVeiculoProprio);
 
-`sku.ilike.%${texto}%,
-descricao.ilike.%${texto}%,
-localizacao.ilike.%${texto}%`
+  // Ao escolher um veículo da frota própria, preenche Placa e Tipo de Veículo automaticamente
+  cargaVeiculoProprioSelect.addEventListener('change', () => {
+    const veiculo = veiculos.find(v => String(v.id) === String(cargaVeiculoProprioSelect.value));
+    if (veiculo) {
+      cargaPlacaInput.value = veiculo.placa;
+      cargaTipoInput.value = veiculo.modelo || '';
+      cargaPlacaInput.readOnly = true;
+      cargaTipoInput.readOnly = true;
+    } else {
+      cargaPlacaInput.readOnly = false;
+      cargaTipoInput.readOnly = false;
+    }
+  });
 
-);
+  formCarga.addEventListener('submit', e => {
+    e.preventDefault();
+    const numeroOC = document.getElementById('cargaOC').value.trim().toUpperCase();
+    const janelaCarregamento = document.getElementById('cargaJanela').value;
+    const modalidade = document.getElementById('cargaModalidade').value;
+    const transportadora = cargaTransportadoraInput.value.trim() || '?';
+    const tipoVeiculo = cargaTipoInput.value.trim();
+    const placa = cargaPlacaInput.value.trim().toUpperCase();
+    const veiculoId = cargaVeiculoProprioSelect.value || null;
 
-if(error){
+    const avisoOC = document.getElementById('avisoOCDuplicada');
+    avisoOC.style.display = 'none';
 
-alert(error.message);
+    if (!numeroOC || !janelaCarregamento) return;
 
-return;
+    // Cada programação precisa de uma OC única
+    if (cargasProgramadas.some(c => c.numeroOC === numeroOC)) {
+      avisoOC.style.display = 'block';
+      return;
+    }
 
-}
+    // Aviso (não bloqueia) quando a janela está a menos de 24h — a recomendação é programar com 1 dia de antecedência
+    const horasAteJanela = (new Date(janelaCarregamento) - new Date()) / (1000 * 60 * 60);
+    if (horasAteJanela >= 0 && horasAteJanela < 24) {
+      alert('⚠ Atenção: essa janela de carregamento está a menos de 1 dia de antecedência. O recomendado é programar a carga com pelo menos 1 dia antes da viagem factual. A carga será criada mesmo assim.');
+    }
 
-preencher(data);
+    cargasProgramadas.push({
+      id: Date.now() + Math.random(),
+      numeroOC,
+      janelaCarregamento,
+      modalidade,
+      transportadora,
+      tipoVeiculo,
+      placa,
+      veiculoId,
+      status: 'Programada'
+    });
 
-}
+    formCarga.reset();
+    document.getElementById('cargaModalidade').value = 'Dedicado';
+    atualizarCampoVeiculoProprio();
+    cargaPlacaInput.readOnly = false;
+    cargaTipoInput.readOnly = false;
+    renderTudo();
+  });
 
-//============================
-// TABELA
-//============================
+  function removerCarga(id) {
+    cargasProgramadas = cargasProgramadas.filter(c => String(c.id) !== String(id));
+    itensCarga = itensCarga.filter(it => String(it.cargaId) !== String(id));
+    renderTudo();
+  }
 
-function preencher(lista){
+  // Resolve o veículo vinculado a uma carga: pelo veiculoId (frota própria) ou pela placa informada
+  function getVeiculoDaCarga(carga) {
+    if (!carga) return null;
+    if (carga.veiculoId) {
+      const v = veiculos.find(v => String(v.id) === String(carga.veiculoId));
+      if (v) return v;
+    }
+    if (carga.placa) {
+      return veiculos.find(v => v.placa === carga.placa) || null;
+    }
+    return null;
+  }
 
-const tbody=document.getElementById("tabela");
+  function calcularPalletsUsados(cargaId, excluirItemId) {
+    return itensCarga
+      .filter(it => String(it.cargaId) === String(cargaId) && String(it.id) !== String(excluirItemId))
+      .reduce((soma, it) => soma + (it.quantidadePallets || 0), 0);
+  }
 
-tbody.innerHTML="";
+  function adicionarItemCarga(cargaId) {
+    const itemInput = document.getElementById('itemNome_' + cargaId);
+    const qtdInput = document.getElementById('itemQtd_' + cargaId);
+    const palletsInput = document.getElementById('itemPallets_' + cargaId);
+    const clienteInput = document.getElementById('itemCliente_' + cargaId);
+    const destinoInput = document.getElementById('itemDestino_' + cargaId);
+    const nfInput = document.getElementById('itemNf_' + cargaId);
+    const entregaInput = document.getElementById('itemEntrega_' + cargaId);
+    const statusSelect = document.getElementById('itemStatus_' + cargaId);
 
-lista.forEach(item=>{
+    const item = itemInput.value.trim().toUpperCase();
+    const quantidade = parseFloat(qtdInput.value);
+    const quantidadePallets = parseFloat(palletsInput.value) || 0;
+    const cliente = clienteInput.value.trim();
+    const destino = destinoInput.value.trim().toUpperCase();
 
-let status=item.saldo_atual<=item.estoque_minimo
-?"BAIXO"
-:"OK";
+    if (!item || isNaN(quantidade) || quantidade <= 0 || !destino) {
+      alert('Informe ao menos Item, Quantidade e Destino antes de adicionar.');
+      return;
+    }
 
-let classe=item.saldo_atual<=item.estoque_minimo
-?"baixo"
-:"ok";
+    // Valida a quantidade de pallets contra a capacidade do veículo vinculado à carga (quando conhecido)
+    if (quantidadePallets > 0) {
+      const carga = cargasProgramadas.find(c => String(c.id) === String(cargaId));
+      const veiculo = getVeiculoDaCarga(carga);
+      if (veiculo && veiculo.capacidadePallets) {
+        const jaUsados = calcularPalletsUsados(cargaId);
+        const totalComEsteItem = jaUsados + quantidadePallets;
+        if (totalComEsteItem > veiculo.capacidadePallets) {
+          alert(
+            `⚠ Não é possível adicionar: essa carga já soma ${formatarQtd(jaUsados)} pallets. ` +
+            `Adicionando ${formatarQtd(quantidadePallets)} pallets chegaria a ${formatarQtd(totalComEsteItem)}, ` +
+            `que ultrapassa a capacidade do veículo ${veiculo.placa} (${formatarQtd(veiculo.capacidadePallets)} pallets).`
+          );
+          return;
+        }
+      }
+    }
 
-tbody.innerHTML+=`
+    itensCarga.push({
+      id: Date.now() + Math.random(),
+      cargaId,
+      item,
+      quantidade,
+      quantidadePallets,
+      cliente,
+      destino,
+      nf: nfInput.value.trim(),
+      janelaEntrega: entregaInput.value,
+      status: statusSelect.value
+    });
 
-<tr>
+    renderTudo();
+    // Mantém o detalhe da carga aberto após adicionar um item
+    setTimeout(() => {
+      const linha = document.getElementById('detalhe_' + cargaId);
+      if (linha) linha.style.display = 'table-row';
+      const seta = document.getElementById('seta_' + cargaId);
+      if (seta) seta.classList.add('aberto');
+    }, 0);
+  }
 
-<td>${item.sku}</td>
+  function removerItemCarga(itemId, cargaId) {
+    itensCarga = itensCarga.filter(it => String(it.id) !== String(itemId));
+    renderTudo();
+    setTimeout(() => {
+      const linha = document.getElementById('detalhe_' + cargaId);
+      if (linha) linha.style.display = 'table-row';
+      const seta = document.getElementById('seta_' + cargaId);
+      if (seta) seta.classList.add('aberto');
+    }, 0);
+  }
 
-<td>${item.descricao}</td>
+  function atualizarStatusItemCarga(itemId, novoStatus) {
+    const item = itensCarga.find(it => String(it.id) === String(itemId));
+    if (item) item.status = novoStatus;
+    renderTudo();
+  }
 
-<td>${item.categoria}</td>
+  // Converte a carga programada numa Viagem real (Expedição > Viagens Programadas), cadastrando o
+  // veículo automaticamente caso a placa informada ainda não exista no Cadastro de Veículos
+  function converterCargaEmViagem(cargaId) {
+    const carga = cargasProgramadas.find(c => String(c.id) === String(cargaId));
+    if (!carga) return;
 
-<td>${item.localizacao}</td>
+    if (!carga.placa) {
+      alert('Informe a Placa do veículo (editando a carga) antes de converter em viagem.');
+      return;
+    }
 
-<td>${item.estoque_minimo}</td>
+    let veiculo = getVeiculoDaCarga(carga);
+    if (!veiculo) {
+      veiculo = {
+        id: Date.now() + Math.random(),
+        placa: carga.placa,
+        modelo: carga.tipoVeiculo,
+        capacidadeKg: 0,
+        transportadora: carga.transportadora,
+        status: 'Disponível',
+        observacao: 'Cadastrado automaticamente a partir da Programação de Cargas'
+      };
+      veiculos.push(veiculo);
+    }
 
-<td>${item.saldo_atual}</td>
+    const itens = itensCarga.filter(it => String(it.cargaId) === String(cargaId));
+    const destinos = [...new Set(itens.map(it => it.destino).filter(Boolean))].join(', ');
+    const resumoItens = itens.map(it => `${it.item} (${formatarQtd(it.quantidade)} un.)`).join(', ');
 
-<td class="${classe}">${status}</td>
+    viagens.push({
+      id: Date.now() + Math.random(),
+      veiculoId: veiculo.id,
+      motorista: '',
+      dataHora: carga.janelaCarregamento,
+      previsaoChegada: '',
+      origem: '',
+      destino: destinos || 'A definir',
+      observacoes: resumoItens ? `Itens: ${resumoItens}` : '',
+      status: 'Programada'
+    });
 
-</tr>
+    carga.status = 'Convertida em Viagem';
+    renderTudo();
+    alert('Carga convertida em viagem! Confira em Expedição → Viagens Programadas / Status de Veículo.');
+  }
 
-`;
+  function renderCargasProgramadas() {
+    const tbody = document.querySelector('#tabelaCargas tbody');
+    const msgVazio = document.getElementById('msgCargaVazio');
 
-});
+    tbody.innerHTML = '';
+    if (cargasProgramadas.length === 0) {
+      msgVazio.style.display = 'block';
+      document.getElementById('tabelaCargas').style.display = 'none';
+      return;
+    }
+    msgVazio.style.display = 'none';
+    document.getElementById('tabelaCargas').style.display = 'table';
 
-}
+    [...cargasProgramadas].reverse().forEach(c => {
+      const itens = itensCarga.filter(it => String(it.cargaId) === String(c.id));
+      const jaConvertida = c.status === 'Convertida em Viagem';
+      const veiculo = getVeiculoDaCarga(c);
 
-//============================
+      const tr = document.createElement('tr');
+      tr.className = 'linha-expansivel';
+      tr.setAttribute('onclick', `toggleDetalheApontamento('${c.id}')`);
+      tr.innerHTML = `
+        <td><span class="expand-arrow" id="seta_${c.id}">▸</span></td>
+        <td><span class="badge">${c.numeroOC}</span></td>
+        <td>${formatarDataHoraBR(c.janelaCarregamento)}</td>
+        <td>${c.modalidade || '-'}</td>
+        <td>${c.transportadora || '?'}</td>
+        <td>${c.tipoVeiculo || '-'}</td>
+        <td>${c.placa || '-'}</td>
+        <td>${itens.length}</td>
+        <td>${c.status}</td>
+        <td class="actions-col"><button class="btn danger" onclick="event.stopPropagation(); removerCarga('${c.id}')">✕</button></td>
+      `;
+      tbody.appendChild(tr);
 
-carregar();
+      const trDetalhe = document.createElement('tr');
+      trDetalhe.className = 'linha-detalhe';
+      trDetalhe.id = 'detalhe_' + c.id;
+      trDetalhe.style.display = 'none';
 
+      const linhasItens = itens.map(it => `
+        <tr>
+          <td>${it.item}</td>
+          <td>${formatarQtd(it.quantidade)}</td>
+          <td>${it.quantidadePallets ? formatarQtd(it.quantidadePallets) : '-'}</td>
+          <td>${it.cliente || '-'}</td>
+          <td>${it.destino}</td>
+          <td>${it.nf || '-'}</td>
+          <td>${it.janelaEntrega ? formatarDataHoraBR(it.janelaEntrega) : '-'}</td>
+          <td>
+            <select onchange="atualizarStatusItemCarga('${it.id}', this.value)" style="min-width:110px;">
+              <option value="Programado" ${it.status === 'Programado' ? 'selected' : ''}>Programado</option>
+              <option value="Confirmado" ${it.status === 'Confirmado' ? 'selected' : ''}>Confirmado</option>
+              <option value="Em Trânsito" ${it.status === 'Em Trânsito' ? 'selected' : ''}>Em Trânsito</option>
+              <option value="Entregue" ${it.status === 'Entregue' ? 'selected' : ''}>Entregue</option>
+              <option value="Cancelado" ${it.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
+            </select>
+          </td>
+          <td class="actions-col"><button class="btn danger" onclick="removerItemCarga('${it.id}', '${c.id}')">✕</button></td>
+        </tr>
+      `).join('');
+
+      const palletsUsados = calcularPalletsUsados(c.id);
+      let resumoCapacidade = '';
+      if (veiculo && veiculo.capacidadePallets) {
+        const classe = palletsUsados > veiculo.capacidadePallets ? 'divergencia-alerta' : 'divergencia-ok';
+        resumoCapacidade = `<p class="toolbar-hint" style="margin:0 0 10px 0;">
+          🅿️ Pallets nesta carga: <span class="${classe}">${formatarQtd(palletsUsados)} / ${formatarQtd(veiculo.capacidadePallets)}</span>
+          (veículo ${veiculo.placa})
+        </p>`;
+      } else if (c.modalidade === 'Fracionado') {
+        resumoCapacidade = `<p class="toolbar-hint" style="margin:0 0 10px 0;">🅿️ Pallets nesta carga: ${formatarQtd(palletsUsados)} (defina a Placa/veículo para validar contra a capacidade cadastrada)</p>`;
+      }
+
+      trDetalhe.innerHTML = `
+        <td colspan="10">
+          <div onclick="event.stopPropagation();">
+            ${resumoCapacidade}
+            <table style="margin-bottom:12px;">
+              <thead>
+                <tr>
+                  <th>Item / Praça</th><th>Quantidade</th><th>Pallets</th><th>Cliente</th><th>Destino</th>
+                  <th>NF</th><th>Janela de Entrega</th><th>Status</th><th class="actions-col">Ação</th>
+                </tr>
+              </thead>
+              <tbody>${linhasItens || '<tr><td colspan="9" class="empty-msg">Nenhum item adicionado ainda.</td></tr>'}</tbody>
+            </table>
+            <div class="detalhe-fisica" style="flex-wrap:wrap;">
+              <input type="text" id="itemNome_${c.id}" list="datalistMateriais" placeholder="Item (Ex: PJ2)" style="width:110px;">
+              <input type="number" id="itemQtd_${c.id}" min="0.01" step="any" placeholder="Quantidade" style="width:100px;">
+              <input type="number" id="itemPallets_${c.id}" min="0" step="any" placeholder="Pallets" style="width:90px;">
+              <input type="text" id="itemCliente_${c.id}" placeholder="Cliente (Ex: AMAZON)" style="width:130px;">
+              <input type="text" id="itemDestino_${c.id}" placeholder="Destino / Praça (Ex: GIG1)" style="width:130px;">
+              <input type="text" id="itemNf_${c.id}" placeholder="NF (opcional)" style="width:100px;">
+              <input type="datetime-local" id="itemEntrega_${c.id}" style="width:170px;">
+              <select id="itemStatus_${c.id}" style="min-width:110px;">
+                <option value="Programado">Programado</option>
+                <option value="Confirmado">Confirmado</option>
+                <option value="Em Trânsito">Em Trânsito</option>
+                <option value="Entregue">Entregue</option>
+                <option value="Cancelado">Cancelado</option>
+              </select>
+              <button class="btn" style="background:#157a3d;" onclick="adicionarItemCarga('${c.id}')">+ Adicionar Item</button>
+              ${jaConvertida
+                ? '<span class="empty-msg" style="padding:0;">✔ Já convertida em viagem</span>'
+                : `<button class="btn" style="background:#2563eb;" onclick="converterCargaEmViagem('${c.id}')">🚚 Converter em Viagem</button>`}
+            </div>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(trDetalhe);
+    });
+  }
+
+  // ============== EXPEDIÇÃO > CADASTRO DE VEÍCULOS ==============
+  const formVeiculo = document.getElementById('formVeiculo');
+  formVeiculo.addEventListener('submit', e => {
+    e.preventDefault();
+    const placa = document.getElementById('veiPlaca').value.trim().toUpperCase();
+    const modelo = document.getElementById('veiModelo').value.trim();
+    const capacidadeKg = parseFloat(document.getElementById('veiCapacidade').value) || 0;
+    const capacidadePallets = parseFloat(document.getElementById('veiCapacidadePallets').value) || 0;
+    const transportadora = document.getElementById('veiTransportadora').value.trim();
+    const status = document.getElementById('veiStatus').value;
+    const observacao = document.getElementById('veiObservacao').value.trim();
+    if (!placa) return;
+
+    const existente = veiculos.find(v => v.placa === placa);
+    if (existente) {
+      Object.assign(existente, { modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao });
+    } else {
+      veiculos.push({ id: Date.now() + Math.random(), placa, modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao });
+    }
+    formVeiculo.reset();
+    document.getElementById('veiStatus').value = 'Disponível';
+    renderTudo();
+  });
+
+  function removerVeiculo(id) {
+    veiculos = veiculos.filter(v => String(v.id) !== String(id));
+    renderTudo();
+  }
+
+  function renderVeiculos() {
+    const tbody = document.querySelector('#tabelaVeiculos tbody');
+    const msg = document.getElementById('msgVeiculoVazio');
+    tbody.innerHTML = '';
+    if (veiculos.length === 0) {
+      msg.style.display = 'block';
+      document.getElementById('tabelaVeiculos').style.display = 'none';
+      return;
+    }
+    msg.style.display = 'none';
+    document.getElementById('tabelaVeiculos').style.display = 'table';
+    veiculos.forEach(v => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge">${v.placa}</span></td>
+        <td>${v.modelo || '-'}</td>
+        <td>${v.capacidadeKg ? formatarQtd(v.capacidadeKg) : '-'}</td>
+        <td>${v.capacidadePallets ? formatarQtd(v.capacidadePallets) : '-'}</td>
+        <td>${v.transportadora || '-'}</td>
+        <td>${v.status || '-'}</td>
+        <td>${v.observacao || '-'}</td>
+        <td class="actions-col"><button class="btn danger" onclick="removerVeiculo('${v.id}')">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ============== EXPEDIÇÃO > VIAGENS PROGRAMADAS / STATUS DE VEÍCULO ==============
+  function removerViagem(id) {
+    viagens = viagens.filter(vi => String(vi.id) !== String(id));
+    renderTudo();
+  }
+
+  function atualizarMotoristaViagem(id, valor) {
+    const viagem = viagens.find(vi => String(vi.id) === String(id));
+    if (viagem) viagem.motorista = valor.trim();
+    renderTudo();
+  }
+
+  function atualizarDataHoraViagem(id, valor) {
+    const viagem = viagens.find(vi => String(vi.id) === String(id));
+    if (viagem) viagem.dataHora = valor;
+    renderTudo();
+  }
+
+  function atualizarPrevisaoChegadaViagem(id, valor) {
+    const viagem = viagens.find(vi => String(vi.id) === String(id));
+    if (viagem) viagem.previsaoChegada = valor;
+    renderTudo();
+  }
+
+  // Ao mudar o status da viagem, sincroniza automaticamente o status do veículo vinculado
+  function atualizarStatusViagem(id, novoStatus) {
+    const viagem = viagens.find(vi => String(vi.id) === String(id));
+    if (!viagem) return;
+    viagem.status = novoStatus;
+
+    const veiculo = veiculos.find(v => String(v.id) === String(viagem.veiculoId));
+    if (veiculo) {
+      if (novoStatus === 'Em Trânsito') veiculo.status = 'Em Viagem';
+      else if (novoStatus === 'Concluída' || novoStatus === 'Cancelada') veiculo.status = 'Disponível';
+      else if (novoStatus === 'Programada') veiculo.status = 'Em Viagem';
+    }
+    renderTudo();
+  }
+
+  function formatarDataHoraBR(valorDatetimeLocal) {
+    if (!valorDatetimeLocal) return '-';
+    const [data, hora] = valorDatetimeLocal.split('T');
+    return `${formatarDataBR(data)} ${hora || ''}`.trim();
+  }
+
+  function construirBlocoPrevisao(vi) {
+    if (vi.status === 'Programada') {
+      return `
+        <div class="truck-card-previsao">
+          <span>🕐 Previsão de Saída</span>
+          <input type="datetime-local" value="${vi.dataHora || ''}" onchange="atualizarDataHoraViagem('${vi.id}', this.value)">
+        </div>`;
+    }
+    if (vi.status === 'Em Trânsito') {
+      return `
+        <div class="truck-card-previsao chegada">
+          <span>📍 Previsão de Chegada</span>
+          <input type="datetime-local" value="${vi.previsaoChegada || ''}" onchange="atualizarPrevisaoChegadaViagem('${vi.id}', this.value)">
+        </div>`;
+    }
+    if (vi.status === 'Concluída') {
+      return `
+        <div class="truck-card-previsao concluida">
+          <span>✅ Concluída</span>
+          <span>${vi.previsaoChegada ? formatarDataHoraBR(vi.previsaoChegada) : formatarDataHoraBR(vi.dataHora)}</span>
+        </div>`;
+    }
+    return `
+      <div class="truck-card-previsao cancelada">
+        <span>❌ Viagem cancelada</span>
+      </div>`;
+  }
+
+  function renderViagens() {
+    const grid = document.getElementById('gridViagens');
+    const msg = document.getElementById('msgViagemVazio');
+    grid.innerHTML = '';
+    if (viagens.length === 0) {
+      msg.style.display = 'block';
+      grid.style.display = 'none';
+      return;
+    }
+    msg.style.display = 'none';
+    grid.style.display = 'grid';
+
+    [...viagens].reverse().forEach(vi => {
+      const veiculo = veiculos.find(v => String(v.id) === String(vi.veiculoId));
+      const card = document.createElement('div');
+      card.className = 'truck-card';
+      card.innerHTML = `
+        <div class="truck-card-header">
+          <span class="truck-card-icon">🚛</span>
+          <div>
+            <div class="truck-card-placa">${veiculo ? veiculo.placa : '(sem veículo)'}</div>
+            <div class="truck-card-modelo">${veiculo ? [veiculo.modelo, veiculo.transportadora].filter(Boolean).join(' · ') || '-' : '-'}</div>
+          </div>
+        </div>
+
+        <div class="truck-card-row">
+          <label>Motorista</label>
+          <input type="text" value="${vi.motorista || ''}" placeholder="Definir" onchange="atualizarMotoristaViagem('${vi.id}', this.value)">
+        </div>
+        <div class="truck-card-row">
+          <label>Destino</label>
+          <span>${vi.destino}</span>
+        </div>
+        <div class="truck-card-row">
+          <label>Status</label>
+          <select onchange="atualizarStatusViagem('${vi.id}', this.value)">
+            <option value="Programada" ${vi.status === 'Programada' ? 'selected' : ''}>Programada</option>
+            <option value="Em Trânsito" ${vi.status === 'Em Trânsito' ? 'selected' : ''}>Em Trânsito</option>
+            <option value="Concluída" ${vi.status === 'Concluída' ? 'selected' : ''}>Concluída</option>
+            <option value="Cancelada" ${vi.status === 'Cancelada' ? 'selected' : ''}>Cancelada</option>
+          </select>
+        </div>
+
+        ${construirBlocoPrevisao(vi)}
+
+        ${vi.observacoes ? `<div class="truck-card-row" style="align-items:flex-start;"><label>Obs.</label><span style="text-align:right; max-width:65%;">${vi.observacoes}</span></div>` : ''}
+
+        <div class="truck-card-footer">
+          <button class="btn danger" onclick="removerViagem('${vi.id}')">✕ Remover</button>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function renderStatusFrota() {
+    const tbody = document.querySelector('#tabelaStatusFrota tbody');
+    const msg = document.getElementById('msgStatusFrotaVazio');
+    tbody.innerHTML = '';
+    if (veiculos.length === 0) {
+      msg.style.display = 'block';
+      document.getElementById('tabelaStatusFrota').style.display = 'none';
+      return;
+    }
+    msg.style.display = 'none';
+    document.getElementById('tabelaStatusFrota').style.display = 'table';
+
+    veiculos.forEach(v => {
+      const tr = document.createElement('tr');
+      const classeStatus = v.status === 'Disponível' ? 'pos' : (v.status === 'Em Viagem' ? '' : 'neg');
+      tr.innerHTML = `
+        <td><span class="badge">${v.placa}</span></td>
+        <td>${v.modelo || '-'}</td>
+        <td>${v.capacidadeKg ? formatarQtd(v.capacidadeKg) : '-'}</td>
+        <td class="${classeStatus}">${v.status || '-'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ============== ENDEREÇOS ==============
+  const formEndereco = document.getElementById('formEndereco');
+  formEndereco.addEventListener('submit', e => {
+    e.preventDefault();
+    const codigo = document.getElementById('endCodigo').value.trim().toUpperCase();
+    const rua = document.getElementById('endRua').value.trim();
+    const bloco = document.getElementById('endBloco').value.trim();
+    const nivel = document.getElementById('endNivel').value.trim();
+    const capacidadeKg = parseFloat(document.getElementById('endCapacidade').value) || 0;
+    const status = document.getElementById('endStatus').value;
+    const observacao = document.getElementById('endObservacao').value.trim();
+    if (!codigo) return;
+
+    const existente = enderecos.find(en => en.codigo === codigo);
+    if (existente) {
+      Object.assign(existente, { rua, bloco, nivel, capacidadeKg, status, observacao });
+    } else {
+      enderecos.push({ id: Date.now() + Math.random(), codigo, rua, bloco, nivel, capacidadeKg, status, observacao, descricao: '' });
+    }
+    formEndereco.reset();
+    document.getElementById('endStatus').value = 'LIVRE';
+    renderTudo();
+  });
+
+  function removerEndereco(id) {
+    const alvo = enderecos.find(e => String(e.id) === String(id));
+    if (alvo && alvo.codigo === CODIGO_ENDERECO_PISO) {
+      alert('O endereço PISO é uma área especial usada pelo sistema para material apontado aguardando alocação e não pode ser excluído.');
+      return;
+    }
+    enderecos = enderecos.filter(e => e.id !== id);
+    renderTudo();
+  }
+
+  function labelEndereco(en) {
+    const partes = [en.rua ? `Rua ${en.rua}` : '', en.bloco ? `Bloco ${en.bloco}` : '', en.nivel ? `Nível ${en.nivel}` : ''].filter(Boolean);
+    return partes.join(' · ') || en.descricao || '';
+  }
+
+  function renderEnderecos() {
+    const tbody = document.querySelector('#tabelaEnderecos tbody');
+    const msg = document.getElementById('msgEndVazio');
+    tbody.innerHTML = '';
+    if (enderecos.length === 0) {
+      msg.style.display = 'block';
+      document.getElementById('tabelaEnderecos').style.display = 'none';
+      return;
+    }
+    msg.style.display = 'none';
+    document.getElementById('tabelaEnderecos').style.display = 'table';
+    enderecos.forEach(en => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge">${en.codigo}</span></td>
+        <td>${en.rua || '-'}</td>
+        <td>${en.bloco || '-'}</td>
+        <td>${en.nivel || '-'}</td>
+        <td>${en.capacidadeKg ? formatarQtd(en.capacidadeKg) : '-'}</td>
+        <td>${en.status || '-'}</td>
+        <td>${en.observacao || '-'}</td>
+        <td class="actions-col"><button class="btn danger" onclick="removerEndereco(${en.id})">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ============== MATERIAIS ==============
+  const formMaterial = document.getElementById('formMaterial');
+  formMaterial.addEventListener('submit', e => {
+    e.preventDefault();
+    const codigo = document.getElementById('matCodigo').value.trim().toUpperCase();
+    const descricao = document.getElementById('matDescricao').value.trim();
+    const pesoUnitarioKg = parseFloat(document.getElementById('matPesoUnitario').value) || 0;
+    if (!codigo || !descricao) return;
+    materiais.push({ id: Date.now() + Math.random(), codigo, descricao, pesoUnitarioKg });
+    formMaterial.reset();
+    renderTudo();
+  });
+
+  function removerMaterial(id) {
+    materiais = materiais.filter(m => m.id !== id);
+    renderTudo();
+  }
+
+  function renderMateriais() {
+    const tbody = document.querySelector('#tabelaMateriais tbody');
+    const msg = document.getElementById('msgMatVazio');
+    tbody.innerHTML = '';
+    if (materiais.length === 0) {
+      msg.style.display = 'block';
+      document.getElementById('tabelaMateriais').style.display = 'none';
+      return;
+    }
+    msg.style.display = 'none';
+    document.getElementById('tabelaMateriais').style.display = 'table';
+    materiais.forEach(m => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge">${m.codigo}</span></td>
+        <td>${m.descricao}</td>
+        <td>${m.familia || '-'}</td>
+        <td>${m.unidade || '-'}</td>
+        <td>${m.estoqueMinimo || m.estoqueMinimo === 0 ? formatarQtd(m.estoqueMinimo) : '-'}</td>
+        <td>${m.estoqueMaximo || m.estoqueMaximo === 0 ? formatarQtd(m.estoqueMaximo) : '-'}</td>
+        <td>${m.pesoUnitarioKg ? formatarQtd(m.pesoUnitarioKg) : '-'}</td>
+        <td>${m.ativo || '-'}</td>
+        <td>${m.pecasPorPct ? formatarQtd(m.pecasPorPct) : '-'}</td>
+        <td>${m.pesoPacoteKg ? formatarQtd(m.pesoPacoteKg) : '-'}</td>
+        <td>${m.amarracao || '-'}</td>
+        <td>${m.qtdAltura || '-'}</td>
+        <td>${m.qtdPctPorPallet || '-'}</td>
+        <td>${m.qtdTotalPc ? formatarQtd(m.qtdTotalPc) : '-'}</td>
+        <td class="actions-col"><button class="btn danger" onclick="removerMaterial(${m.id})">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ============== SELECTS DA MOVIMENTAÇÃO ==============
+  function atualizarSelects() {
+    const selUsu = document.getElementById('movUsuario');
+    const selEnd = document.getElementById('movEndereco');
+    const selMat = document.getElementById('movMaterial');
+    const selSolMat = document.getElementById('solCodigoMaterial');
+    const selSolMatMaterial = document.getElementById('solMatCodigoMaterial');
+
+    selUsu.innerHTML = usuarios.map(u => `<option value="${u.id}">${u.matricula} - ${u.nome}</option>`).join('');
+    selEnd.innerHTML = enderecos.map(en => `<option value="${en.id}">${en.codigo}${labelEndereco(en) ? ' - ' + labelEndereco(en) : ''}</option>`).join('');
+    selMat.innerHTML = materiais.map(m => `<option value="${m.id}">${m.codigo} - ${m.descricao}</option>`).join('');
+    selSolMat.innerHTML = materiais.map(m => `<option value="${m.id}">${m.codigo}</option>`).join('');
+    selSolMatMaterial.innerHTML = '<option value="">Selecione...</option>' + materiais.map(m => `<option value="${m.id}">${m.codigo}</option>`).join('');
+
+    const aviso = document.getElementById('avisoCadastros');
+    const podeMovimentar = usuarios.length > 0 && enderecos.length > 0 && materiais.length > 0;
+    aviso.style.display = podeMovimentar ? 'none' : 'block';
+    document.getElementById('formMov').style.opacity = podeMovimentar ? '1' : '0.5';
+    document.getElementById('formMov').querySelectorAll('input,select,button').forEach(el => el.disabled = !podeMovimentar);
+
+    const avisoSol = document.getElementById('avisoSolicitacaoMateriais');
+    const podeSolicitar = materiais.length > 0;
+    avisoSol.style.display = podeSolicitar ? 'none' : 'block';
+    document.getElementById('formSolicitacao').style.opacity = podeSolicitar ? '1' : '0.5';
+    document.getElementById('formSolicitacao').querySelectorAll('input,select,button').forEach(el => el.disabled = !podeSolicitar);
+
+    const avisoSolMat = document.getElementById('avisoSolicitacaoMaterialMateriais');
+    avisoSolMat.style.display = podeSolicitar ? 'none' : 'block';
+    document.getElementById('formSolicitacaoMaterial').style.opacity = podeSolicitar ? '1' : '0.5';
+    document.getElementById('formSolicitacaoMaterial').querySelectorAll('input,select,button').forEach(el => el.disabled = !podeSolicitar);
+
+    const datalistMat = document.getElementById('datalistMateriais');
+    datalistMat.innerHTML = materiais.map(m => `<option value="${m.codigo}">${m.descricao}</option>`).join('');
+
+    const selCargaVeiculoProprio = document.getElementById('cargaVeiculoProprio');
+    const valorSelecionadoCarga = selCargaVeiculoProprio.value;
+    selCargaVeiculoProprio.innerHTML = '<option value="">Selecione...</option>' +
+      veiculos.map(v => `<option value="${v.id}">${v.placa}${v.modelo ? ' - ' + v.modelo : ''}${v.capacidadePallets ? ' (' + formatarQtd(v.capacidadePallets) + ' pallets)' : ''}</option>`).join('');
+    if (veiculos.some(v => String(v.id) === String(valorSelecionadoCarga))) {
+      selCargaVeiculoProprio.value = valorSelecionadoCarga;
+    }
+
+    // Atualiza a descrição preenchida automaticamente conforme o material selecionado
+    atualizarDescricaoSolicitacao();
+    atualizarDescricaoEPesoSolicitacaoMaterial();
+  }
+
+  function atualizarDescricaoSolicitacao() {
+    const selSolMat = document.getElementById('solCodigoMaterial');
+    const descInput = document.getElementById('solDescricao');
+    const mat = getMaterial(selSolMat.value);
+    descInput.value = mat ? mat.descricao : '';
+  }
+
+  // ---- Comercial > Solicitação de Material: descrição + peso estimado automáticos ----
+  function atualizarDescricaoEPesoSolicitacaoMaterial() {
+    const selMat = document.getElementById('solMatCodigoMaterial');
+    const descInput = document.getElementById('solMatDescricao');
+    const quantidadeInput = document.getElementById('solMatQuantidade');
+    const pesoInput = document.getElementById('solMatPesoEstimado');
+    const mat = getMaterial(selMat.value);
+
+    descInput.value = mat ? mat.descricao : '';
+
+    const quantidade = parseFloat(quantidadeInput.value);
+    if (mat && mat.pesoUnitarioKg && !isNaN(quantidade) && quantidade > 0) {
+      pesoInput.value = formatarQtd(quantidade * mat.pesoUnitarioKg) + ' kg';
+    } else {
+      pesoInput.value = '';
+    }
+  }
+
+  // ============== MOVIMENTAÇÃO ==============
+  const formMov = document.getElementById('formMov');
+  formMov.addEventListener('submit', e => {
+    e.preventDefault();
+    const usuarioId = document.getElementById('movUsuario').value;
+    const enderecoId = document.getElementById('movEndereco').value;
+    const materialId = document.getElementById('movMaterial').value;
+    const tipo = document.getElementById('movTipo').value;
+    const quantidade = parseFloat(document.getElementById('movQuantidade').value);
+
+    if (!usuarioId || !enderecoId || !materialId || isNaN(quantidade) || quantidade <= 0) return;
+
+    movimentacoes.push({
+      id: Date.now() + Math.random(),
+      dataHora: new Date().toLocaleString('pt-BR'),
+      usuarioId, enderecoId, materialId, tipo, quantidade
+    });
+
+    document.getElementById('movQuantidade').value = '';
+    renderTudo();
+  });
+
+  function removerMovimentacao(id) {
+    movimentacoes = movimentacoes.filter(m => m.id !== id);
+    renderTudo();
+  }
+
+  function getUsuario(id) { return usuarios.find(u => String(u.id) === String(id)); }
+  function getEndereco(id) { return enderecos.find(e => String(e.id) === String(id)); }
+  function getMaterial(id) { return materiais.find(m => String(m.id) === String(id)); }
+
+  // ============== SOLICITAÇÃO DE VERIFICAÇÃO DE ESTOQUE ==============
+  const formSolicitacao = document.getElementById('formSolicitacao');
+  const solCodigoMaterialSelect = document.getElementById('solCodigoMaterial');
+  const solDataInput = document.getElementById('solDataSolicitacao');
+
+  // Define a data de solicitação padrão como hoje
+  function preencherDataHoje() {
+    const hoje = new Date();
+    const yyyy = hoje.getFullYear();
+    const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dd = String(hoje.getDate()).padStart(2, '0');
+    solDataInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+  preencherDataHoje();
+
+  solCodigoMaterialSelect.addEventListener('change', atualizarDescricaoSolicitacao);
+
+  formSolicitacao.addEventListener('submit', e => {
+    e.preventDefault();
+    const numeroPedido = document.getElementById('solNumeroPedido').value.trim();
+    const materialId = solCodigoMaterialSelect.value;
+    const quantidadeSolicitada = parseFloat(document.getElementById('solQuantidadeSolicitada').value);
+    const dataSolicitacao = solDataInput.value;
+
+    if (!numeroPedido || !materialId || !dataSolicitacao || isNaN(quantidadeSolicitada) || quantidadeSolicitada <= 0) return;
+
+    const totalAbertas = solicitacoes.filter(s => s.status === 'Aberta').length;
+
+    if (totalAbertas >= LIMITE_SOLICITACOES_ABERTAS) {
+      // Limite atingido: solicitação vai para a fila de espera
+      filaSolicitacoes.push({
+        id: Date.now() + Math.random(),
+        numeroPedido,
+        materialId,
+        quantidadeSolicitada,
+        dataEntradaFila: new Date().toDateString(),
+        status: 'Em fila'
+      });
+
+      alert(
+        `⚠ Limite de ${LIMITE_SOLICITACOES_ABERTAS} solicitações em aberto atingido.\n\n` +
+        `Sua solicitação (Pedido ${numeroPedido}) foi colocada na fila de espera e será liberada automaticamente ` +
+        `assim que o Estoque responder uma das solicitações em aberto, ou no dia seguinte.`
+      );
+
+      formSolicitacao.reset();
+      preencherDataHoje();
+      renderTudo();
+      return;
+    }
+
+    solicitacoes.push({
+      id: Date.now() + Math.random(),
+      numeroPedido,
+      materialId,
+      quantidadeSolicitada,
+      quantidadeDisponivel: null,
+      dataSolicitacao,
+      status: 'Aberta'
+    });
+
+    formSolicitacao.reset();
+    preencherDataHoje();
+    renderTudo();
+  });
+
+  // Libera solicitações da fila de espera assim que houver vaga (limite não atingido)
+  function liberarProximaDaFila() {
+    let totalAbertas = solicitacoes.filter(s => s.status === 'Aberta').length;
+    while (totalAbertas < LIMITE_SOLICITACOES_ABERTAS && filaSolicitacoes.length > 0) {
+      const proxima = filaSolicitacoes.shift();
+      solicitacoes.push({
+        id: proxima.id,
+        numeroPedido: proxima.numeroPedido,
+        materialId: proxima.materialId,
+        quantidadeSolicitada: proxima.quantidadeSolicitada,
+        quantidadeDisponivel: null,
+        dataSolicitacao: new Date().toISOString().slice(0, 10),
+        status: 'Aberta'
+      });
+      totalAbertas++;
+    }
+  }
+
+  // Verifica se o dia mudou desde a última checagem; se sim, libera a fila
+  function verificarNovoDia() {
+    const hoje = new Date().toDateString();
+    if (hoje !== ultimoDiaVerificado) {
+      ultimoDiaVerificado = hoje;
+      liberarProximaDaFila();
+      renderTudo();
+    }
+  }
+  setInterval(verificarNovoDia, 60000);
+
+  function removerSolicitacao(id) {
+    solicitacoes = solicitacoes.filter(s => s.id !== id);
+    liberarProximaDaFila();
+    renderTudo();
+  }
+
+  // Chamada pela tela Comercial (atalho, sem preencher qtd. disponível)
+  function concluirSolicitacao(id) {
+    const s = solicitacoes.find(s => s.id === id);
+    if (s) s.status = 'Verificação concluída';
+    liberarProximaDaFila();
+    renderTudo();
+  }
+
+  // Chamada pela tela Estoque: registra a qtd. disponível informada e conclui a verificação
+  function concluirVerificacaoEstoque(id) {
+    const s = solicitacoes.find(s => String(s.id) === String(id));
+    if (!s) return;
+    const input = document.getElementById('qtdDisp_' + id);
+    const valor = parseFloat(input.value);
+    if (isNaN(valor) || valor < 0) {
+      alert('Informe uma Quantidade Disponível válida antes de concluir a verificação.');
+      return;
+    }
+    s.quantidadeDisponivel = valor;
+    s.status = 'Verificação concluída';
+    liberarProximaDaFila();
+    renderTudo();
+  }
+
+  function formatarDataBR(dataISO) {
+    if (!dataISO) return '-';
+    const [ano, mes, dia] = dataISO.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+
+  function formatarQtd(valor) {
+    return (valor === null || valor === undefined || isNaN(valor)) ? '-' : Number(valor).toLocaleString('pt-BR');
+  }
+
+  // ---- Tabela: Comercial > Solicitações Abertas ----
+  function renderSolicitacoes() {
+    const tbody = document.querySelector('#tabelaSolicitacoes tbody');
+    const msgVazio = document.getElementById('msgSolicitacaoVazio');
+    const abertas = solicitacoes.filter(s => s.status === 'Aberta');
+
+    tbody.innerHTML = '';
+    if (abertas.length === 0) {
+      msgVazio.style.display = 'block';
+      document.getElementById('tabelaSolicitacoes').style.display = 'none';
+      return;
+    }
+    msgVazio.style.display = 'none';
+    document.getElementById('tabelaSolicitacoes').style.display = 'table';
+
+    abertas.forEach(s => {
+      const mat = getMaterial(s.materialId);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${s.numeroPedido}</td>
+        <td><span class="badge">${mat ? mat.codigo : '(removido)'}</span></td>
+        <td>${mat ? mat.descricao : '-'}</td>
+        <td>${formatarQtd(s.quantidadeSolicitada)}</td>
+        <td>${formatarDataBR(s.dataSolicitacao)}</td>
+        <td>${s.status}</td>
+        <td class="actions-col">
+          <button class="btn" style="display:block; width:100%; padding:6px 8px; font-size:12px; margin-bottom:4px;" onclick="gerarPDFSolicitacao('${s.id}')">📄 PDF</button>
+          <button class="btn danger" style="display:block; width:100%; padding:6px 8px; font-size:12px;" onclick="removerSolicitacao('${s.id}')">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---- Badges de notificação e contador de limite diário ----
+  function atualizarBadgesSolicitacao() {
+    const totalAbertas = solicitacoes.filter(s => s.status === 'Aberta').length;
+
+    ['badgeVerificacaoEstoque', 'badgeSolicitacaoVerificacao'].forEach(idEl => {
+      const el = document.getElementById(idEl);
+      if (!el) return;
+      el.textContent = totalAbertas;
+      el.style.display = totalAbertas > 0 ? 'flex' : 'none';
+    });
+
+    const contador = document.getElementById('contadorLimiteSolicitacao');
+    const txt = document.getElementById('txtContadorLimite');
+    if (contador && txt) {
+      txt.textContent = `${totalAbertas}/${LIMITE_SOLICITACOES_ABERTAS} solicitações em aberto no momento` +
+        (filaSolicitacoes.length > 0 ? ` · ${filaSolicitacoes.length} na fila de espera` : '');
+      contador.style.display = 'block';
+    }
+  }
+
+  // ---- Tabela: Comercial > Fila de Espera ----
+  function renderFilaSolicitacoes() {
+    const tbody = document.querySelector('#tabelaFilaSolicitacoes tbody');
+    const msgVazio = document.getElementById('msgFilaVazio');
+
+    tbody.innerHTML = '';
+    if (filaSolicitacoes.length === 0) {
+      msgVazio.style.display = 'block';
+      document.getElementById('tabelaFilaSolicitacoes').style.display = 'none';
+      return;
+    }
+    msgVazio.style.display = 'none';
+    document.getElementById('tabelaFilaSolicitacoes').style.display = 'table';
+
+    filaSolicitacoes.forEach((f, index) => {
+      const mat = getMaterial(f.materialId);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${index + 1}º</td>
+        <td>${f.numeroPedido}</td>
+        <td><span class="badge">${mat ? mat.codigo : '(removido)'}</span></td>
+        <td>${mat ? mat.descricao : '-'}</td>
+        <td>${formatarQtd(f.quantidadeSolicitada)}</td>
+        <td>${f.status}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---- Tabela: Comercial > Solicitações Verificadas ----
+  function renderSolicitacoesVerificadas() {
+    const tbody = document.querySelector('#tabelaSolicitacoesVerificadas tbody');
+    const msgVazio = document.getElementById('msgSolicitacaoVerificadaVazio');
+    const verificadas = solicitacoes.filter(s => s.status === 'Verificação concluída');
+
+    tbody.innerHTML = '';
+    if (verificadas.length === 0) {
+      msgVazio.style.display = 'block';
+      document.getElementById('tabelaSolicitacoesVerificadas').style.display = 'none';
+      return;
+    }
+    msgVazio.style.display = 'none';
+    document.getElementById('tabelaSolicitacoesVerificadas').style.display = 'table';
+
+    verificadas.forEach(s => {
+      const mat = getMaterial(s.materialId);
+      const faltante = (s.quantidadeSolicitada || 0) - (s.quantidadeDisponivel || 0);
+      const jaGerou = !!s.producaoGerada;
+      const botaoProducao = jaGerou
+        ? `<span class="empty-msg" style="padding:0; font-size:11px;">Produção já gerada ✓</span>`
+        : `<button class="btn" style="display:block; width:100%; padding:6px 8px; font-size:12px; background:#b45309; margin-top:4px;" onclick="gerarSolicitacaoProducao('${s.id}')">🏭 Gerar Produção</button>`;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${s.numeroPedido}</td>
+        <td><span class="badge">${mat ? mat.codigo : '(removido)'}</span></td>
+        <td>${mat ? mat.descricao : '-'}</td>
+        <td>${formatarQtd(s.quantidadeSolicitada)}</td>
+        <td>${formatarQtd(s.quantidadeDisponivel)}</td>
+        <td>${formatarDataBR(s.dataSolicitacao)}</td>
+        <td>${s.status}</td>
+        <td class="actions-col">
+          <button class="btn" style="display:block; width:100%; padding:6px 8px; font-size:12px;" onclick="gerarPDFSolicitacao('${s.id}')">📄 PDF</button>
+          ${botaoProducao}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ============== COMERCIAL > SOLICITAÇÃO DE MATERIAL ==============
+  const formSolicitacaoMaterial = document.getElementById('formSolicitacaoMaterial');
+  const solMatCodigoMaterialSelect = document.getElementById('solMatCodigoMaterial');
+  const solMatDataInput = document.getElementById('solMatData');
+
+  function preencherDataHojeMaterial() {
+    const hoje = new Date();
+    const yyyy = hoje.getFullYear();
+    const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dd = String(hoje.getDate()).padStart(2, '0');
+    solMatDataInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+  preencherDataHojeMaterial();
+
+  solMatCodigoMaterialSelect.addEventListener('change', atualizarDescricaoEPesoSolicitacaoMaterial);
+  document.getElementById('solMatQuantidade').addEventListener('input', atualizarDescricaoEPesoSolicitacaoMaterial);
+
+  formSolicitacaoMaterial.addEventListener('submit', e => {
+    e.preventDefault();
+    const materialId = solMatCodigoMaterialSelect.value;
+    const quantidade = parseFloat(document.getElementById('solMatQuantidade').value);
+    const data = solMatDataInput.value;
+
+    if (!materialId || !data || isNaN(quantidade) || quantidade <= 0) return;
+
+    const mat = getMaterial(materialId);
+    const pesoEstimado = (mat && mat.pesoUnitarioKg) ? quantidade * mat.pesoUnitarioKg : null;
+
+    solicitacoesMaterial.push({
+      id: Date.now() + Math.random(),
+      materialId,
+      quantidade,
+      pesoEstimado,
+      data
+    });
+
+    formSolicitacaoMaterial.reset();
+    preencherDataHojeMaterial();
+    renderTudo();
+  });
+
+  function removerSolicitacaoMaterial(id) {
+    solicitacoesMaterial = solicitacoesMaterial.filter(s => String(s.id) !== String(id));
+    renderTudo();
+  }
+
+  function renderSolicitacoesMaterial() {
+    const tbody = document.querySelector('#tabelaSolicitacoesMaterial tbody');
+    const msgVazio = document.getElementById('msgSolicitacaoMaterialVazio');
+
+    tbody.innerHTML = '';
+    if (solicitacoesMaterial.length === 0) {
+      msgVazio.style.display = 'block';
+      document.getElementById('tabelaSolicitacoesMaterial').style.display = 'none';
+      return;
+    }
+    msgVazio.style.display = 'none';
+    document.getElementById('tabelaSolicitacoesMaterial').style.display = 'table';
+
+    [...solicitacoesMaterial].reverse().forEach(s => {
+      const mat = getMaterial(s.materialId);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge">${mat ? mat.codigo : '(removido)'}</span></td>
+        <td>${mat ? mat.descricao : '-'}</td>
+        <td>${formatarQtd(s.quantidade)}</td>
+        <td>${s.pesoEstimado !== null ? formatarQtd(s.pesoEstimado) + ' kg' : '-'}</td>
+        <td>${formatarDataBR(s.data)}</td>
+        <td class="actions-col"><button class="btn danger" onclick="removerSolicitacaoMaterial('${s.id}')">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---- Tabela: Estoque > Verificação de Solicitações ----
+  function renderVerificacaoEstoque() {
+    const tbody = document.querySelector('#tabelaVerificacaoEstoque tbody');
+    const msgVazio = document.getElementById('msgVerificacaoVazio');
+    const abertas = solicitacoes.filter(s => s.status === 'Aberta');
+
+    tbody.innerHTML = '';
+    if (abertas.length === 0) {
+      msgVazio.style.display = 'block';
+      document.getElementById('tabelaVerificacaoEstoque').style.display = 'none';
+      return;
+    }
+    msgVazio.style.display = 'none';
+    document.getElementById('tabelaVerificacaoEstoque').style.display = 'table';
+
+    abertas.forEach(s => {
+      const mat = getMaterial(s.materialId);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${s.numeroPedido}</td>
+        <td><span class="badge">${mat ? mat.codigo : '(removido)'}</span></td>
+        <td>${mat ? mat.descricao : '-'}</td>
+        <td>${formatarQtd(s.quantidadeSolicitada)}</td>
+        <td>${formatarDataBR(s.dataSolicitacao)}</td>
+        <td>${s.status}</td>
+        <td><input type="number" id="qtdDisp_${s.id}" min="0" step="any" placeholder="Ex: 30" style="width:100px;"></td>
+        <td class="actions-col">
+          <button class="btn" style="display:block; width:100%; padding:6px 8px; font-size:12px; background:#157a3d;" onclick="concluirVerificacaoEstoque('${s.id}')">✔ Concluir</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---- Comercial > Solicitação de Produção de material ----
+  function gerarSolicitacaoProducao(id) {
+    const s = solicitacoes.find(s => String(s.id) === String(id));
+    if (!s || s.producaoGerada) return;
+
+    const quantidadeProduzir = Math.max((s.quantidadeSolicitada || 0) - (s.quantidadeDisponivel || 0), 0);
+
+    producoes.push({
+      id: Date.now() + Math.random(),
+      numeroPedidoRef: s.numeroPedido,
+      materialId: s.materialId,
+      quantidadeSolicitada: s.quantidadeSolicitada,
+      quantidadeDisponivel: s.quantidadeDisponivel,
+      quantidadeProduzir,
+      dataGeracao: new Date().toLocaleDateString('pt-BR'),
+      status: 'Aguardando Produção'
+    });
+
+    s.producaoGerada = true;
+    renderTudo();
+  }
+
+  // ---- Estoque > Apontamento de Material Produzido (por turno/máquina/OP) ----
+  function opcoesEnderecos(selecionadoId) {
+    return enderecos.map(en => `<option value="${en.id}" ${String(en.id) === String(selecionadoId) ? 'selected' : ''}>${en.codigo}${labelEndereco(en) ? ' - ' + labelEndereco(en) : ''}</option>`).join('');
+  }
+
+  // Mesma lista, mas sem o endereço especial PISO — usado quando o destino precisa ser uma posição real
+  function opcoesEnderecosSemPiso(selecionadoId) {
+    return enderecos.filter(en => en.codigo !== CODIGO_ENDERECO_PISO)
+      .map(en => `<option value="${en.id}" ${String(en.id) === String(selecionadoId) ? 'selected' : ''}>${en.codigo}${labelEndereco(en) ? ' - ' + labelEndereco(en) : ''}</option>`).join('');
+  }
+
+  function opcoesUsuarios(selecionadoId) {
+    return usuarios.map(u => `<option value="${u.id}" ${String(u.id) === String(selecionadoId) ? 'selected' : ''}>${u.matricula} - ${u.nome}</option>`).join('');
+  }
+
+  // Soma tudo que já foi apontado (em todos os turnos) para uma produção específica
+  function calcularProducaoAcumulada(producaoId) {
+    return apontamentosProducao
+      .filter(a => String(a.producaoId) === String(producaoId))
+      .reduce((soma, a) => soma + (a.qtdProduzidaTurno || 0), 0);
+  }
+
+  function renderApontamentoPendente() {
+    const tbody = document.querySelector('#tabelaApontamentoPendente tbody');
+    const msgVazio = document.getElementById('msgApontamentoPendenteVazio');
+    const aviso = document.getElementById('avisoApontamentoCadastros');
+    const pendentes = producoes.filter(p => p.status === 'Aguardando Produção');
+
+    const podeApontar = usuarios.length > 0;
+    aviso.style.display = podeApontar ? 'none' : 'block';
+
+    tbody.innerHTML = '';
+    if (pendentes.length === 0) {
+      msgVazio.style.display = 'block';
+      document.getElementById('tabelaApontamentoPendente').style.display = 'none';
+      return;
+    }
+    msgVazio.style.display = 'none';
+    document.getElementById('tabelaApontamentoPendente').style.display = 'table';
+
+    pendentes.forEach(p => {
+      const mat = getMaterial(p.materialId);
+      const jaProduzido = calcularProducaoAcumulada(p.id);
+      const qtdDaOP = p.qtdDaOP || p.quantidadeProduzir || 0;
+      const saldoAProduzir = Math.max(qtdDaOP - jaProduzido, 0);
+      const percentual = qtdDaOP > 0 ? (jaProduzido / qtdDaOP * 100) : 0;
+      const dis = podeApontar ? '' : 'disabled';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${p.numeroPedidoRef}</td>
+        <td><span class="badge">${mat ? mat.codigo : '(removido)'}</span></td>
+        <td>${mat ? mat.descricao : '-'}</td>
+        <td>${formatarQtd(jaProduzido)}</td>
+        <td><input type="number" id="qtdOP_${p.id}" min="0" step="any" value="${qtdDaOP || ''}" style="width:90px;" ${dis}></td>
+        <td class="${saldoAProduzir > 0 ? 'neg' : 'pos'}">${formatarQtd(saldoAProduzir)}</td>
+        <td>${percentual.toFixed(1)}%</td>
+        <td><input type="text" id="maquina_${p.id}" placeholder="Ex: Máq. 01" style="width:90px;" ${dis}></td>
+        <td>
+          <select id="statusMaq_${p.id}" style="min-width:110px;" ${dis}>
+            <option value="PRODUZINDO">PRODUZINDO</option>
+            <option value="PARADA">PARADA</option>
+            <option value="CONCLUÍDA">CONCLUÍDA</option>
+          </select>
+        </td>
+        <td><input type="text" id="numOP_${p.id}" placeholder="Ex: 51280" style="width:90px;" ${dis}></td>
+        <td><input type="number" id="qtdTurno_${p.id}" min="0.01" step="any" placeholder="Ex: 100" style="width:100px;" ${dis}></td>
+        <td><input type="text" id="embalagem_${p.id}" placeholder="Ex: Pacote (Pré-Embalagem)" style="width:150px;" ${dis}></td>
+        <td><input type="text" id="especCaixa_${p.id}" placeholder="Ex: PCT - 20L x 37C x 8A" style="width:140px;" ${dis}></td>
+        <td><input type="number" id="qtdEmbalagem_${p.id}" min="0" step="any" placeholder="Ex: 500" style="width:90px;" ${dis}></td>
+        <td><input type="number" id="pesoVolume_${p.id}" min="0" step="any" placeholder="Ex: 4.5" style="width:90px;" ${dis}></td>
+        <td><input type="text" id="obsApont_${p.id}" placeholder="Opcional" style="width:130px;" ${dis}></td>
+        <td><select id="respApont_${p.id}" style="min-width:130px;" ${dis}>${opcoesUsuarios()}</select></td>
+        <td class="actions-col">
+          <button class="btn" style="display:block; width:100%; padding:6px 8px; font-size:12px; background:#157a3d;" onclick="registrarApontamentoTurno('${p.id}')" ${dis}>✔ Apontar</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderApontamentoRealizado() {
+    const tbody = document.querySelector('#tabelaApontamentoRealizado tbody');
+    const msgVazio = document.getElementById('msgApontamentoRealizadoVazio');
+
+    tbody.innerHTML = '';
+    if (apontamentosProducao.length === 0) {
+      msgVazio.style.display = 'block';
+      document.getElementById('tabelaApontamentoRealizado').style.display = 'none';
+      return;
+    }
+    msgVazio.style.display = 'none';
+    document.getElementById('tabelaApontamentoRealizado').style.display = 'table';
+
+    [...apontamentosProducao].reverse().forEach(a => {
+      const p = producoes.find(pr => String(pr.id) === String(a.producaoId));
+      const mat = p ? getMaterial(p.materialId) : null;
+      const end = getEndereco(a.enderecoId);
+      const usu = getUsuario(a.usuarioId);
+      const jaConferido = a.qtdApontadaFisica !== null && a.qtdApontadaFisica !== undefined;
+      const divergenciaClasse = jaConferido ? (a.divergencia === 0 ? 'divergencia-ok' : 'divergencia-alerta') : '';
+      const divergenciaTexto = jaConferido ? (a.divergencia > 0 ? '+' + formatarQtd(a.divergencia) : formatarQtd(a.divergencia)) : '-';
+
+      const tr = document.createElement('tr');
+      tr.className = 'linha-expansivel';
+      tr.setAttribute('onclick', `toggleDetalheApontamento('${a.id}')`);
+      tr.innerHTML = `
+        <td><span class="expand-arrow" id="seta_${a.id}">▸</span></td>
+        <td>${a.dataHora}</td>
+        <td>${p ? p.numeroPedidoRef : '-'}</td>
+        <td><span class="badge">${mat ? mat.codigo : '(removido)'}</span></td>
+        <td>${mat ? mat.descricao : '-'}</td>
+        <td>${a.maquina || '-'}</td>
+        <td>${a.statusMaquina || '-'}</td>
+        <td>${a.numeroOP || '-'}</td>
+        <td>${formatarQtd(a.qtdProduzidaTurno)}</td>
+        <td>${jaConferido ? formatarQtd(a.qtdApontadaFisica) : '<em style="color:#999; font-weight:400;">a conferir</em>'}</td>
+        <td class="${divergenciaClasse}">${divergenciaTexto}</td>
+        <td>${formatarQtd(a.qtdDaOP)}</td>
+        <td>${formatarQtd(a.producaoTotalDaOP)}</td>
+        <td class="${a.saldoAProduzir > 0 ? 'neg' : 'pos'}">${formatarQtd(a.saldoAProduzir)}</td>
+        <td>${(a.percentualConclusao || 0).toFixed(1)}%</td>
+        <td>${a.tipoEmbalagem || '-'}</td>
+        <td>${a.especificacaoCaixa || '-'}</td>
+        <td>${a.qtdNaEmbalagem ? formatarQtd(a.qtdNaEmbalagem) : '-'}</td>
+        <td>${a.pesoPorVolumeKg ? formatarQtd(a.pesoPorVolumeKg) : '-'}</td>
+        <td>${a.observacoes || '-'}</td>
+        <td>${end ? end.codigo : '-'}</td>
+        <td>${usu ? usu.nome : '-'}</td>
+      `;
+      tbody.appendChild(tr);
+
+      const trDetalhe = document.createElement('tr');
+      trDetalhe.className = 'linha-detalhe';
+      trDetalhe.id = 'detalhe_' + a.id;
+      trDetalhe.style.display = 'none';
+
+      const conteudoDetalhe = jaConferido
+        ? `<div class="detalhe-fisica">
+             <span>✔ Conferido — Qtde Sistema (turno): <strong>${formatarQtd(a.qtdProduzidaTurno)}</strong> ·
+             Qtde Física: <strong>${formatarQtd(a.qtdApontadaFisica)}</strong> ·
+             Divergência: <span class="${divergenciaClasse}">${divergenciaTexto}</span></span>
+             <button class="btn" style="background:#475569; font-size:12px; padding:6px 10px;" onclick="event.stopPropagation(); reabrirConferenciaFisica('${a.id}')">✎ Corrigir</button>
+           </div>`
+        : `<div class="detalhe-fisica" onclick="event.stopPropagation();">
+             <label>Qtde Apontada Física:</label>
+             <input type="number" id="fisica_${a.id}" min="0" step="any" placeholder="Ex: ${a.qtdProduzidaTurno}">
+             <button class="btn" style="background:#157a3d; font-size:12px; padding:8px 14px;" onclick="confirmarQtdFisica('${a.id}')">✔ Confirmar</button>
+           </div>`;
+
+      trDetalhe.innerHTML = `<td colspan="22">${conteudoDetalhe}</td>`;
+      tbody.appendChild(trDetalhe);
+    });
+  }
+
+  function toggleDetalheApontamento(id) {
+    const linha = document.getElementById('detalhe_' + id);
+    const seta = document.getElementById('seta_' + id);
+    if (!linha) return;
+    const aberta = linha.style.display !== 'none';
+    linha.style.display = aberta ? 'none' : 'table-row';
+    if (seta) seta.classList.toggle('aberto', !aberta);
+  }
+
+  function confirmarQtdFisica(id) {
+    const a = apontamentosProducao.find(a => String(a.id) === String(id));
+    if (!a) return;
+    const input = document.getElementById('fisica_' + id);
+    const qtdFisica = parseFloat(input.value);
+
+    if (isNaN(qtdFisica) || qtdFisica < 0) {
+      alert('Informe a Quantidade Apontada Física antes de confirmar.');
+      return;
+    }
+
+    const divergencia = qtdFisica - a.qtdProduzidaTurno;
+    a.qtdApontadaFisica = qtdFisica;
+    a.divergencia = divergencia;
+
+    // Registra a divergência como observação na movimentação de estoque vinculada
+    const mov = movimentacoes.find(m => String(m.id) === String(a.movimentacaoId));
+    if (mov) {
+      mov.observacao = divergencia === 0
+        ? `Conferido: qtde apontada em sistema (${formatarQtd(a.qtdProduzidaTurno)}) confere com a física.`
+        : `Divergência apontamento: sistema ${formatarQtd(a.qtdProduzidaTurno)} × físico ${formatarQtd(qtdFisica)} ` +
+          `(${divergencia > 0 ? '+' : ''}${formatarQtd(divergencia)}).`;
+    }
+
+    renderTudo();
+  }
+
+  function reabrirConferenciaFisica(id) {
+    const a = apontamentosProducao.find(a => String(a.id) === String(id));
+    if (!a) return;
+    a.qtdApontadaFisica = null;
+    a.divergencia = null;
+    const mov = movimentacoes.find(m => String(m.id) === String(a.movimentacaoId));
+    if (mov) mov.observacao = '';
+    renderTudo();
+    // Reabre o detalhe já expandido para facilitar nova conferência
+    setTimeout(() => toggleDetalheApontamento(id), 0);
+  }
+
+  function registrarApontamentoTurno(producaoId) {
+    const p = producoes.find(p => String(p.id) === String(producaoId));
+    if (!p) return;
+
+    const qtdOPInput = document.getElementById('qtdOP_' + producaoId);
+    const maquinaInput = document.getElementById('maquina_' + producaoId);
+    const statusSelect = document.getElementById('statusMaq_' + producaoId);
+    const numOPInput = document.getElementById('numOP_' + producaoId);
+    const qtdTurnoInput = document.getElementById('qtdTurno_' + producaoId);
+    const embalagemInput = document.getElementById('embalagem_' + producaoId);
+    const especCaixaInput = document.getElementById('especCaixa_' + producaoId);
+    const qtdEmbalagemInput = document.getElementById('qtdEmbalagem_' + producaoId);
+    const pesoVolumeInput = document.getElementById('pesoVolume_' + producaoId);
+    const obsInput = document.getElementById('obsApont_' + producaoId);
+    const respSelect = document.getElementById('respApont_' + producaoId);
+
+    const qtdDaOP = parseFloat(qtdOPInput.value) || (p.qtdDaOP || p.quantidadeProduzir || 0);
+    const qtdProduzidaTurno = parseFloat(qtdTurnoInput.value);
+    const usuarioId = respSelect.value;
+
+    if (isNaN(qtdProduzidaTurno) || qtdProduzidaTurno <= 0) {
+      alert('Informe a Quantidade Produzida no Turno antes de registrar o apontamento.');
+      return;
+    }
+    if (!usuarioId) {
+      alert('Selecione o Responsável antes de registrar o apontamento.');
+      return;
+    }
+
+    // Todo apontamento entra em PISO (Stand By) — só vira saldo em posição definitiva após alocação manual
+    const enderecoId = getOuCriarEnderecoPiso().id;
+
+    // Guarda/atualiza a Qtd. da OP na própria produção (referência entre turnos)
+    p.qtdDaOP = qtdDaOP;
+
+    const jaProduzidoAntes = calcularProducaoAcumulada(p.id);
+    const producaoTotalDaOP = jaProduzidoAntes + qtdProduzidaTurno;
+    const saldoAProduzir = Math.max(qtdDaOP - producaoTotalDaOP, 0);
+    const percentualConclusao = qtdDaOP > 0 ? (producaoTotalDaOP / qtdDaOP * 100) : 0;
+
+    const idApontamento = Date.now() + Math.random();
+    const idMovimentacao = Date.now() + Math.random() + 0.001;
+
+    apontamentosProducao.push({
+      id: idApontamento,
+      producaoId: p.id,
+      dataHora: new Date().toLocaleString('pt-BR'),
+      maquina: maquinaInput.value.trim(),
+      statusMaquina: statusSelect.value,
+      numeroOP: numOPInput.value.trim(),
+      qtdProduzidaTurno,
+      qtdDaOP,
+      producaoTotalDaOP,
+      saldoAProduzir,
+      percentualConclusao,
+      tipoEmbalagem: embalagemInput.value.trim(),
+      especificacaoCaixa: especCaixaInput.value.trim(),
+      qtdNaEmbalagem: parseFloat(qtdEmbalagemInput.value) || 0,
+      pesoPorVolumeKg: parseFloat(pesoVolumeInput.value) || 0,
+      observacoes: obsInput.value.trim(),
+      enderecoId,
+      usuarioId,
+      movimentacaoId: idMovimentacao,
+      qtdApontadaFisica: null,
+      divergencia: null
+    });
+
+    // Gera entrada em estoque com o material produzido neste turno
+    movimentacoes.push({
+      id: idMovimentacao,
+      dataHora: new Date().toLocaleString('pt-BR'),
+      usuarioId,
+      enderecoId,
+      materialId: p.materialId,
+      tipo: 'entrada',
+      quantidade: qtdProduzidaTurno,
+      observacao: ''
+    });
+
+    // Só marca a produção como concluída quando o total acumulado atingir a Qtd. da OP
+    if (producaoTotalDaOP >= qtdDaOP) {
+      p.status = 'Produzido';
+    }
+
+    renderTudo();
+  }
+
+  function gerarPDFSolicitacao(id) {
+    const s = solicitacoes.find(s => String(s.id) === String(id));
+    if (!s) return;
+    const mat = getMaterial(s.materialId);
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFillColor(31, 58, 95);
+    doc.rect(0, 0, 210, 25, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.text('Solicitação de Verificação de Estoque', 105, 15, { align: 'center' });
+
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(11);
+
+    let y = 42;
+    const linha = (rotulo, valor) => {
+      doc.setFont(undefined, 'bold');
+      doc.text(rotulo, 20, y);
+      doc.setFont(undefined, 'normal');
+      doc.text(String(valor || '-'), 75, y);
+      y += 12;
+    };
+
+    linha('N° Pedido:', s.numeroPedido);
+    linha('Código de Material:', mat ? mat.codigo : '(removido)');
+    linha('Descrição:', mat ? mat.descricao : '(removido)');
+    linha('Quantidade Solicitada:', formatarQtd(s.quantidadeSolicitada));
+    linha('Quantidade Disponível:', formatarQtd(s.quantidadeDisponivel));
+    linha('Data de Solicitação:', formatarDataBR(s.dataSolicitacao));
+    linha('Status:', s.status);
+
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, y, 190, y);
+    y += 10;
+    doc.setFontSize(9);
+    doc.setTextColor(120, 120, 120);
+    doc.text(`Documento gerado em ${new Date().toLocaleString('pt-BR')}`, 20, y);
+
+    doc.save(`solicitacao_pedido_${s.numeroPedido}.pdf`);
+  }
+
+  // ============== SALDO ==============
+  const filtroPosicao = document.getElementById('filtroPosicao');
+  const filtroMaterial = document.getElementById('filtroMaterial');
+  filtroPosicao.addEventListener('input', renderSaldo);
+  filtroMaterial.addEventListener('input', renderSaldo);
+
+  function calcularSaldo() {
+    const saldoMap = {};
+    movimentacoes.forEach(m => {
+      const end = getEndereco(m.enderecoId);
+      const mat = getMaterial(m.materialId);
+      if (!end || !mat) return;
+      const chave = end.codigo + '|||' + mat.codigo;
+      if (!saldoMap[chave]) {
+        saldoMap[chave] = { posicao: end.codigo, material: `${mat.codigo} - ${mat.descricao}`, saldo: 0 };
+      }
+      saldoMap[chave].saldo += (m.tipo === 'entrada' ? m.quantidade : -m.quantidade);
+    });
+    return Object.values(saldoMap).sort((a, b) => {
+      if (a.posicao === b.posicao) return a.material.localeCompare(b.material);
+      return a.posicao.localeCompare(b.posicao);
+    });
+  }
+
+  // Saldo detalhado (posição, código/descrição separados, entradas e saídas), usado na exportação
+  function calcularSaldoDetalhado() {
+    const mapa = {};
+    movimentacoes.forEach(m => {
+      const end = getEndereco(m.enderecoId);
+      const mat = getMaterial(m.materialId);
+      if (!end || !mat) return;
+      const chave = end.codigo + '|||' + mat.codigo;
+      if (!mapa[chave]) {
+        mapa[chave] = { posicao: end.codigo, codigoMaterial: mat.codigo, descricaoMaterial: mat.descricao, entradas: 0, saidas: 0 };
+      }
+      if (m.tipo === 'entrada') mapa[chave].entradas += m.quantidade;
+      else mapa[chave].saidas += m.quantidade;
+    });
+    return Object.values(mapa)
+      .map(r => ({ ...r, saldo: r.entradas - r.saidas }))
+      .sort((a, b) => a.posicao === b.posicao ? a.codigoMaterial.localeCompare(b.codigoMaterial) : a.posicao.localeCompare(b.posicao));
+  }
+
+  // ---- PISO (Stand By): saldo por material aguardando alocação em posição definitiva ----
+  function calcularSaldoPiso() {
+    const piso = enderecos.find(en => en.codigo === CODIGO_ENDERECO_PISO);
+    if (!piso) return [];
+    const mapa = {};
+    movimentacoes.forEach(m => {
+      if (String(m.enderecoId) !== String(piso.id)) return;
+      const mat = getMaterial(m.materialId);
+      if (!mat) return;
+      if (!mapa[mat.id]) mapa[mat.id] = { materialId: mat.id, codigo: mat.codigo, descricao: mat.descricao, saldo: 0 };
+      mapa[mat.id].saldo += (m.tipo === 'entrada' ? m.quantidade : -m.quantidade);
+    });
+    return Object.values(mapa).filter(r => r.saldo > 0).sort((a, b) => a.codigo.localeCompare(b.codigo));
+  }
+
+  function renderAlocacaoPiso() {
+    const tbody = document.querySelector('#tabelaAlocacaoPiso tbody');
+    const msgVazio = document.getElementById('msgAlocacaoPisoVazio');
+    const aviso = document.getElementById('avisoAlocacaoPisoCadastros');
+    const badge = document.getElementById('badgeAlocacaoPiso');
+
+    const saldoPiso = calcularSaldoPiso();
+    if (badge) {
+      badge.textContent = saldoPiso.length;
+      badge.style.display = saldoPiso.length > 0 ? 'flex' : 'none';
+    }
+
+    const enderecosReais = enderecos.filter(en => en.codigo !== CODIGO_ENDERECO_PISO);
+    const podeAlocar = enderecosReais.length > 0 && usuarios.length > 0;
+    aviso.style.display = podeAlocar ? 'none' : 'block';
+
+    tbody.innerHTML = '';
+    if (saldoPiso.length === 0) {
+      msgVazio.style.display = 'block';
+      document.getElementById('tabelaAlocacaoPiso').style.display = 'none';
+      return;
+    }
+    msgVazio.style.display = 'none';
+    document.getElementById('tabelaAlocacaoPiso').style.display = 'table';
+
+    const dis = podeAlocar ? '' : 'disabled';
+    saldoPiso.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge">${r.codigo}</span></td>
+        <td>${r.descricao}</td>
+        <td class="pos">${formatarQtd(r.saldo)}</td>
+        <td><input type="number" id="qtdAlocar_${r.materialId}" min="0.01" max="${r.saldo}" step="any" placeholder="Ex: ${r.saldo}" style="width:100px;" ${dis}></td>
+        <td><select id="destAlocar_${r.materialId}" style="min-width:140px;" ${dis}>${opcoesEnderecosSemPiso()}</select></td>
+        <td><select id="respAlocar_${r.materialId}" style="min-width:130px;" ${dis}>${opcoesUsuarios()}</select></td>
+        <td class="actions-col">
+          <button class="btn" style="display:block; width:100%; padding:6px 8px; font-size:12px; background:#2563eb;" onclick="alocarMaterialPiso('${r.materialId}')" ${dis}>📍 Alocar</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function alocarMaterialPiso(materialId) {
+    const saldoPiso = calcularSaldoPiso();
+    const registro = saldoPiso.find(r => String(r.materialId) === String(materialId));
+    if (!registro) return;
+
+    const qtdInput = document.getElementById('qtdAlocar_' + materialId);
+    const destSelect = document.getElementById('destAlocar_' + materialId);
+    const respSelect = document.getElementById('respAlocar_' + materialId);
+
+    const quantidade = parseFloat(qtdInput.value);
+    const enderecoDestinoId = destSelect.value;
+    const usuarioId = respSelect.value;
+
+    if (isNaN(quantidade) || quantidade <= 0) {
+      alert('Informe a Quantidade a Alocar antes de confirmar.');
+      return;
+    }
+    if (quantidade > registro.saldo) {
+      alert(`Quantidade a alocar (${formatarQtd(quantidade)}) é maior que o saldo em Piso (${formatarQtd(registro.saldo)}).`);
+      return;
+    }
+    if (!enderecoDestinoId || !usuarioId) {
+      alert('Selecione o Endereço de Destino e o Responsável antes de alocar.');
+      return;
+    }
+
+    const pisoId = getOuCriarEnderecoPiso().id;
+    const agora = new Date().toLocaleString('pt-BR');
+    const destino = getEndereco(enderecoDestinoId);
+
+    // Saída de PISO
+    movimentacoes.push({
+      id: Date.now() + Math.random(),
+      dataHora: agora,
+      usuarioId,
+      enderecoId: pisoId,
+      materialId,
+      tipo: 'saida',
+      quantidade,
+      observacao: `Alocação de piso para posição ${destino ? destino.codigo : ''}`
+    });
+
+    // Entrada na posição definitiva
+    movimentacoes.push({
+      id: Date.now() + Math.random() + 0.001,
+      dataHora: agora,
+      usuarioId,
+      enderecoId: enderecoDestinoId,
+      materialId,
+      tipo: 'entrada',
+      quantidade,
+      observacao: 'Material recebido do Piso (Stand By)'
+    });
+
+    renderTudo();
+  }
+
+  // ---- Utilitários de planilha (SheetJS) ----
+  function lerPlanilha(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = evt => {
+        try {
+          const wb = XLSX.read(evt.target.result, { type: 'array' });
+          const primeiraAba = wb.Sheets[wb.SheetNames[0]];
+          const linhas = XLSX.utils.sheet_to_json(primeiraAba, { defval: '' });
+          resolve(linhas);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(new Error('Falha ao ler o arquivo.'));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  // Busca o valor de uma linha da planilha testando várias grafias possíveis para a mesma coluna
+  function valorColuna(linha, ...nomes) {
+    for (const nome of nomes) {
+      for (const chave of Object.keys(linha)) {
+        if (chave.trim().toLowerCase() === nome.trim().toLowerCase()) {
+          return linha[chave];
+        }
+      }
+    }
+    return '';
+  }
+
+  // Garante um usuário "sistema" para atribuir as movimentações geradas por importação de planilha
+  function getOrCriarUsuarioImportacao() {
+    let usu = usuarios.find(u => u.matricula === 'IMPORTACAO');
+    if (!usu) {
+      usu = { id: 'usuario-importacao-sistema', matricula: 'IMPORTACAO', nome: 'Importação de Planilha (sistema)' };
+      usuarios.push(usu);
+    }
+    return usu;
+  }
+
+  // ---- PISO (Stand By): endereço especial onde todo material apontado entra antes de ser alocado ----
+  const CODIGO_ENDERECO_PISO = 'PISO';
+  function getOuCriarEnderecoPiso() {
+    let piso = enderecos.find(en => en.codigo === CODIGO_ENDERECO_PISO);
+    if (!piso) {
+      piso = {
+        id: 'endereco-piso-standby',
+        codigo: CODIGO_ENDERECO_PISO,
+        rua: '', bloco: '', nivel: '',
+        capacidadeKg: 0,
+        status: 'STAND BY',
+        observacao: 'Área de piso — material apontado aguardando alocação em posição definitiva',
+        descricao: ''
+      };
+      enderecos.push(piso);
+    }
+    return piso;
+  }
+
+  // ---- Importar planilha de SALDO (gera entradas/saídas e cadastra endereços/materiais em falta) ----
+  async function importarPlanilhaSaldo(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    let linhas;
+    try {
+      linhas = await lerPlanilha(file);
+    } catch (err) {
+      alert('Não foi possível ler a planilha. Verifique se o arquivo é um .xlsx, .xls ou .csv válido.');
+      event.target.value = '';
+      return;
+    }
+
+    const usuarioImportacao = getOrCriarUsuarioImportacao();
+    let enderecosCriados = 0, materiaisCriados = 0, linhasProcessadas = 0, linhasIgnoradas = 0;
+
+    linhas.forEach(linha => {
+      const codigoPosicao = String(valorColuna(linha, 'POSIÇÃO', 'POSICAO', 'ENDEREÇO', 'ENDERECO')).trim().toUpperCase();
+      const codigoMaterial = String(valorColuna(linha, 'CÓD SKU', 'COD SKU', 'CÓDIGO', 'CODIGO', 'SKU')).trim().toUpperCase();
+      const descricaoMaterial = String(valorColuna(linha, 'DESCRIÇÃO', 'DESCRICAO')).trim();
+      const entradas = parseFloat(valorColuna(linha, 'ENTRADAS KG', 'ENTRADAS')) || 0;
+      const saidas = parseFloat(valorColuna(linha, 'SAÍDAS', 'SAIDAS')) || 0;
+      const saldoInformado = parseFloat(valorColuna(linha, 'SALDO'));
+
+      if (!codigoPosicao || !codigoMaterial) { linhasIgnoradas++; return; }
+
+      let endereco = enderecos.find(en => en.codigo === codigoPosicao);
+      if (!endereco) {
+        endereco = { id: Date.now() + Math.random(), codigo: codigoPosicao, rua: '', bloco: '', nivel: '', capacidadeKg: 0, status: 'OCUPADO', observacao: '', descricao: '' };
+        enderecos.push(endereco);
+        enderecosCriados++;
+      }
+
+      let material = materiais.find(m => m.codigo === codigoMaterial);
+      if (!material) {
+        material = { id: Date.now() + Math.random(), codigo: codigoMaterial, descricao: descricaoMaterial || codigoMaterial };
+        materiais.push(material);
+        materiaisCriados++;
+      }
+
+      const agora = new Date().toLocaleString('pt-BR');
+      if (entradas > 0) {
+        movimentacoes.push({ id: Date.now() + Math.random(), dataHora: agora, usuarioId: usuarioImportacao.id, enderecoId: endereco.id, materialId: material.id, tipo: 'entrada', quantidade: entradas });
+      }
+      if (saidas > 0) {
+        movimentacoes.push({ id: Date.now() + Math.random(), dataHora: agora, usuarioId: usuarioImportacao.id, enderecoId: endereco.id, materialId: material.id, tipo: 'saida', quantidade: saidas });
+      }
+      if (entradas === 0 && saidas === 0 && !isNaN(saldoInformado) && saldoInformado !== 0) {
+        movimentacoes.push({
+          id: Date.now() + Math.random(), dataHora: agora, usuarioId: usuarioImportacao.id, enderecoId: endereco.id, materialId: material.id,
+          tipo: saldoInformado >= 0 ? 'entrada' : 'saida', quantidade: Math.abs(saldoInformado)
+        });
+      }
+      linhasProcessadas++;
+    });
+
+    event.target.value = '';
+    renderTudo();
+    alert(
+      `Importação concluída!\n\n` +
+      `Linhas processadas: ${linhasProcessadas}\n` +
+      `Linhas ignoradas (sem posição/material): ${linhasIgnoradas}\n` +
+      `Endereços novos criados: ${enderecosCriados}\n` +
+      `Materiais novos criados: ${materiaisCriados}`
+    );
+  }
+
+  // ---- Exportar saldo atual para Excel ----
+  function exportarSaldoExcel() {
+    const dados = calcularSaldoDetalhado();
+    if (dados.length === 0) {
+      alert('Não há saldo para exportar ainda.');
+      return;
+    }
+
+    const linhas = dados.map(r => ({
+      'POSIÇÃO': r.posicao,
+      'CÓD SKU': r.codigoMaterial,
+      'DESCRIÇÃO': r.descricaoMaterial,
+      'ENTRADAS': r.entradas,
+      'SAÍDAS': r.saidas,
+      'SALDO': r.saldo
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(linhas);
+    ws['!cols'] = [{ wch: 14 }, { wch: 16 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Saldo');
+
+    const dataArquivo = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `saldo_estoque_${dataArquivo}.xlsx`);
+  }
+
+  // ---- Importar planilha de ENDEREÇOS em massa (cadastra ou atualiza por Posição) ----
+  async function importarPlanilhaEnderecos(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    let linhas;
+    try {
+      linhas = await lerPlanilha(file);
+    } catch (err) {
+      alert('Não foi possível ler a planilha. Verifique se o arquivo é um .xlsx, .xls ou .csv válido.');
+      event.target.value = '';
+      return;
+    }
+
+    let criados = 0, atualizados = 0, ignorados = 0;
+
+    linhas.forEach(linha => {
+      const codigo = String(valorColuna(linha, 'POSIÇÃO', 'POSICAO', 'ENDEREÇO', 'ENDERECO')).trim().toUpperCase();
+      if (!codigo) { ignorados++; return; }
+
+      const rua = String(valorColuna(linha, 'RUA')).trim();
+      const bloco = String(valorColuna(linha, 'BLOCO')).trim();
+      const nivel = String(valorColuna(linha, 'NÍVEL', 'NIVEL')).trim();
+      const capacidadeKg = parseFloat(valorColuna(linha, 'CAPACIDADE KG', 'CAPACIDADE')) || 0;
+      const status = String(valorColuna(linha, 'STATUS')).trim().toUpperCase() || 'LIVRE';
+      const observacao = String(valorColuna(linha, 'OBSERVAÇÃO', 'OBSERVACAO')).trim();
+
+      const existente = enderecos.find(en => en.codigo === codigo);
+      if (existente) {
+        Object.assign(existente, { rua, bloco, nivel, capacidadeKg, status, observacao });
+        atualizados++;
+      } else {
+        enderecos.push({ id: Date.now() + Math.random(), codigo, rua, bloco, nivel, capacidadeKg, status, observacao, descricao: '' });
+        criados++;
+      }
+    });
+
+    event.target.value = '';
+    renderTudo();
+    alert(
+      `Importação concluída!\n\n` +
+      `Endereços novos criados: ${criados}\n` +
+      `Endereços atualizados: ${atualizados}\n` +
+      `Linhas ignoradas (sem posição): ${ignorados}`
+    );
+  }
+
+  // ---- Importar planilha de APONTAMENTO (Máquina, Status, Nº OP, Nº Pedido, Cód. Produto, etc.) ----
+  async function importarPlanilhaApontamento(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (usuarios.length === 0) {
+      alert('Cadastre ao menos um Usuário antes de importar a planilha de apontamento.');
+      event.target.value = '';
+      return;
+    }
+
+    let linhas;
+    try {
+      linhas = await lerPlanilha(file);
+    } catch (err) {
+      alert('Não foi possível ler a planilha. Verifique se o arquivo é um .xlsx, .xls ou .csv válido.');
+      event.target.value = '';
+      return;
+    }
+
+    // Todo apontamento importado entra em PISO (Stand By)
+    const enderecoId = getOuCriarEnderecoPiso().id;
+    const usuarioImportacao = getOrCriarUsuarioImportacao();
+    let linhasProcessadas = 0, linhasIgnoradas = 0, materiaisCriados = 0, producoesCriadas = 0;
+
+    linhas.forEach(linha => {
+      const numeroPedido = String(valorColuna(linha, 'Nº PEDIDO', 'N° PEDIDO', 'NUMERO PEDIDO', 'PEDIDO')).trim();
+      const codigoProduto = String(valorColuna(linha, 'CÓD. PRODUTO', 'COD. PRODUTO', 'CÓDIGO', 'CODIGO', 'CÓD PRODUTO')).trim().toUpperCase();
+      const descricaoProduto = String(valorColuna(linha, 'DESCRIÇÃO PRODUTO', 'DESCRICAO PRODUTO', 'DESCRIÇÃO', 'DESCRICAO')).trim();
+      const maquina = String(valorColuna(linha, 'MÁQUINA', 'MAQUINA')).trim();
+      const statusMaquina = String(valorColuna(linha, 'STATUS')).trim().toUpperCase() || 'PRODUZINDO';
+      const numeroOP = String(valorColuna(linha, 'Nº OP', 'N° OP', 'NUMERO OP', 'OP')).trim();
+      const qtdProduzidaTurno = parseFloat(valorColuna(linha, 'QTD PRODUZIDA NO TURNO', 'QTD. PRODUZIDA NO TURNO', 'QUANTIDADE PRODUZIDA NO TURNO')) || 0;
+      const qtdDaOP = parseFloat(valorColuna(linha, 'QTD DA OP', 'QTD. DA OP', 'QUANTIDADE DA OP')) || 0;
+      const tipoEmbalagem = String(valorColuna(linha, 'TIPO DE EMBALAGEM')).trim();
+      const especificacaoCaixa = String(valorColuna(linha, 'ESPECIFICAÇÃO CAIXA', 'ESPECIFICAÇÃO DA CAIXA', 'ESPECIFICACAO CAIXA')).trim();
+      const qtdNaEmbalagem = parseFloat(valorColuna(linha, 'QTD NA EMBALAGEM', 'QTD. NA EMBALAGEM')) || 0;
+      const pesoPorVolumeKg = parseFloat(valorColuna(linha, 'PESO POR VOLUME [KG]', 'PESO POR VOLUME (KG)', 'PESO POR VOLUME')) || 0;
+      const observacoes = String(valorColuna(linha, 'OBSERVAÇÕES', 'OBSERVACOES', 'OBSERVAÇÃO', 'OBSERVACAO')).trim();
+
+      if (!numeroPedido || !codigoProduto || qtdProduzidaTurno <= 0) { linhasIgnoradas++; return; }
+
+      let material = materiais.find(m => m.codigo === codigoProduto);
+      if (!material) {
+        material = { id: Date.now() + Math.random(), codigo: codigoProduto, descricao: descricaoProduto || codigoProduto, pesoUnitarioKg: 0 };
+        materiais.push(material);
+        materiaisCriados++;
+      }
+
+      let producao = producoes.find(p => p.numeroPedidoRef === numeroPedido && String(p.materialId) === String(material.id));
+      if (!producao) {
+        producao = {
+          id: Date.now() + Math.random(),
+          numeroPedidoRef: numeroPedido,
+          materialId: material.id,
+          quantidadeSolicitada: null,
+          quantidadeDisponivel: null,
+          quantidadeProduzir: qtdDaOP,
+          qtdDaOP: qtdDaOP,
+          dataGeracao: new Date().toLocaleDateString('pt-BR'),
+          status: 'Aguardando Produção',
+          producaoGerada: true
+        };
+        producoes.push(producao);
+        producoesCriadas++;
+      }
+      if (qtdDaOP > 0) producao.qtdDaOP = qtdDaOP;
+
+      const jaProduzidoAntes = calcularProducaoAcumulada(producao.id);
+      const producaoTotalDaOP = jaProduzidoAntes + qtdProduzidaTurno;
+      const qtdDaOPFinal = producao.qtdDaOP || qtdProduzidaTurno;
+      const saldoAProduzir = Math.max(qtdDaOPFinal - producaoTotalDaOP, 0);
+      const percentualConclusao = qtdDaOPFinal > 0 ? (producaoTotalDaOP / qtdDaOPFinal * 100) : 0;
+
+      const idApontamento = Date.now() + Math.random();
+      const idMovimentacao = Date.now() + Math.random() + 0.001;
+
+      apontamentosProducao.push({
+        id: idApontamento,
+        producaoId: producao.id,
+        dataHora: new Date().toLocaleString('pt-BR'),
+        maquina,
+        statusMaquina,
+        numeroOP,
+        qtdProduzidaTurno,
+        qtdDaOP: qtdDaOPFinal,
+        producaoTotalDaOP,
+        saldoAProduzir,
+        percentualConclusao,
+        tipoEmbalagem,
+        especificacaoCaixa,
+        qtdNaEmbalagem,
+        pesoPorVolumeKg,
+        observacoes,
+        enderecoId,
+        usuarioId: usuarioImportacao.id,
+        movimentacaoId: idMovimentacao,
+        qtdApontadaFisica: null,
+        divergencia: null
+      });
+
+      movimentacoes.push({
+        id: idMovimentacao,
+        dataHora: new Date().toLocaleString('pt-BR'),
+        usuarioId: usuarioImportacao.id,
+        enderecoId,
+        materialId: material.id,
+        tipo: 'entrada',
+        quantidade: qtdProduzidaTurno,
+        observacao: ''
+      });
+
+      if (producaoTotalDaOP >= qtdDaOPFinal) {
+        producao.status = 'Produzido';
+      }
+
+      linhasProcessadas++;
+    });
+
+    event.target.value = '';
+    renderTudo();
+    alert(
+      `Importação de apontamento concluída!\n\n` +
+      `Linhas processadas: ${linhasProcessadas}\n` +
+      `Linhas ignoradas (sem pedido/produto/quantidade): ${linhasIgnoradas}\n` +
+      `Materiais novos criados: ${materiaisCriados}\n` +
+      `Produções novas criadas: ${producoesCriadas}\n\n` +
+      `Clique em cada linha na tabela "Apontamentos por Turno" para conferir a Qtde Apontada Física.`
+    );
+  }
+
+  // ---- Cria (ou reaproveita) um objeto de material vazio para ser complementado pelas planilhas ----
+  function getOrCriarMaterial(codigo) {
+    let material = materiais.find(m => m.codigo === codigo);
+    if (!material) {
+      material = { id: Date.now() + Math.random(), codigo, descricao: '' };
+      materiais.push(material);
+    }
+    return material;
+  }
+
+  // ---- Importar planilha de CADASTRO DE SKU ----
+  async function importarPlanilhaCadastroSKU(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    let linhas;
+    try {
+      linhas = await lerPlanilha(file);
+    } catch (err) {
+      alert('Não foi possível ler a planilha. Verifique se o arquivo é um .xlsx, .xls ou .csv válido.');
+      event.target.value = '';
+      return;
+    }
+
+    let criados = 0, atualizados = 0, ignorados = 0;
+
+    linhas.forEach(linha => {
+      const codigo = String(valorColuna(linha, 'CÓD SKU', 'COD SKU', 'CÓDIGO', 'CODIGO', 'SKU')).trim().toUpperCase();
+      if (!codigo) { ignorados++; return; }
+
+      const existiaAntes = materiais.some(m => m.codigo === codigo);
+      const material = getOrCriarMaterial(codigo);
+
+      const descricao = String(valorColuna(linha, 'DESCRIÇÃO', 'DESCRICAO')).trim();
+      const familia = String(valorColuna(linha, 'FAMÍLIA', 'FAMILIA')).trim();
+      const unidade = String(valorColuna(linha, 'UNIDADE')).trim();
+      const estoqueMinimo = parseFloat(valorColuna(linha, 'ESTOQUE MÍN.', 'ESTOQUE MIN.', 'ESTOQUE MÍNIMO', 'ESTOQUE MINIMO'));
+      const estoqueMaximo = parseFloat(valorColuna(linha, 'ESTOQUE MÁX.', 'ESTOQUE MAX.', 'ESTOQUE MÁXIMO', 'ESTOQUE MAXIMO'));
+      const pesoPadrao = parseFloat(valorColuna(linha, 'PESO PADRÃO', 'PESO PADRAO'));
+      const ativo = String(valorColuna(linha, 'ATIVO')).trim().toUpperCase();
+      // Colunas de paletização, caso já venham na mesma planilha de SKU
+      const pecasPorPct = parseFloat(valorColuna(linha, 'PEÇAS POR PCT', 'PECAS POR PCT', 'QTD. POR PCT', 'QTD POR PCT'));
+      const pesoPacoteKg = parseFloat(valorColuna(linha, 'PESO PACOTE', 'PESO DO PACOTE'));
+      const amarracao = String(valorColuna(linha, 'AMARRAÇÃO', 'AMARRACAO')).trim();
+      const qtdAltura = String(valorColuna(linha, 'QTD. ALTURA', 'QTD ALTURA')).trim();
+      const qtdPctPorPallet = String(valorColuna(linha, 'QTD. PCT POR PALLET', 'QTD PCT POR PALLET')).trim();
+      const fracaoPct = String(valorColuna(linha, 'FRAÇÃO PCT', 'FRACAO PCT')).trim();
+      const totalPct = parseFloat(valorColuna(linha, 'TOTAL PCT'));
+      const qtdTotalPc = parseFloat(valorColuna(linha, 'QTD. TOTAL PC', 'QTD TOTAL PC', 'QTD. TOTAL', 'QTD TOTAL'));
+
+      // Só sobrescreve um campo se a planilha realmente trouxe valor — preserva o que já existir
+      if (descricao) material.descricao = descricao;
+      if (familia) material.familia = familia;
+      if (unidade) material.unidade = unidade;
+      if (!isNaN(estoqueMinimo)) material.estoqueMinimo = estoqueMinimo;
+      if (!isNaN(estoqueMaximo)) material.estoqueMaximo = estoqueMaximo;
+      if (!isNaN(pesoPadrao)) material.pesoUnitarioKg = pesoPadrao;
+      if (ativo) material.ativo = ativo;
+      if (!isNaN(pecasPorPct)) material.pecasPorPct = pecasPorPct;
+      if (!isNaN(pesoPacoteKg)) material.pesoPacoteKg = pesoPacoteKg;
+      if (amarracao) material.amarracao = amarracao;
+      if (qtdAltura) material.qtdAltura = qtdAltura;
+      if (qtdPctPorPallet) material.qtdPctPorPallet = qtdPctPorPallet;
+      if (fracaoPct) material.fracaoPct = fracaoPct;
+      if (!isNaN(totalPct)) material.totalPct = totalPct;
+      if (!isNaN(qtdTotalPc)) material.qtdTotalPc = qtdTotalPc;
+
+      if (existiaAntes) atualizados++; else criados++;
+    });
+
+    event.target.value = '';
+    renderTudo();
+    alert(
+      `Importação de Cadastro de SKU concluída!\n\n` +
+      `Materiais novos criados: ${criados}\n` +
+      `Materiais atualizados: ${atualizados}\n` +
+      `Linhas ignoradas (sem código): ${ignorados}`
+    );
+  }
+
+  // ---- Importar planilha de PADRÃO DE PALETIZAÇÃO (complementa o Cadastro de SKU) ----
+  async function importarPlanilhaPaletizacao(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    let linhas;
+    try {
+      linhas = await lerPlanilha(file);
+    } catch (err) {
+      alert('Não foi possível ler a planilha. Verifique se o arquivo é um .xlsx, .xls ou .csv válido.');
+      event.target.value = '';
+      return;
+    }
+
+    let criados = 0, atualizados = 0, ignorados = 0;
+
+    linhas.forEach(linha => {
+      const codigo = String(valorColuna(linha, 'COD. PRODUTO', 'CÓD. PRODUTO', 'CODIGO', 'CÓDIGO', 'COD PRODUTO')).trim().toUpperCase();
+      if (!codigo) { ignorados++; return; }
+
+      const existiaAntes = materiais.some(m => m.codigo === codigo);
+      const material = getOrCriarMaterial(codigo);
+
+      const qtdPorPct = parseFloat(valorColuna(linha, 'QTD. POR PCT', 'QTD POR PCT'));
+      const amarracao = String(valorColuna(linha, 'AMARRAÇÃO', 'AMARRACAO')).trim();
+      const qtdAltura = String(valorColuna(linha, 'QTD. ALTURA', 'QTD ALTURA')).trim();
+      const qtdPctPorPallet = String(valorColuna(linha, 'QTD. PCT POR PALLET', 'QTD PCT POR PALLET')).trim();
+      const qtdTotal = parseFloat(valorColuna(linha, 'QTD. TOTAL', 'QTD TOTAL'));
+
+      if (!isNaN(qtdPorPct)) material.pecasPorPct = qtdPorPct;
+      if (amarracao) material.amarracao = amarracao;
+      if (qtdAltura) material.qtdAltura = qtdAltura;
+      if (qtdPctPorPallet) material.qtdPctPorPallet = qtdPctPorPallet;
+      if (!isNaN(qtdTotal)) material.qtdTotalPc = qtdTotal;
+
+      if (existiaAntes) atualizados++; else criados++;
+    });
+
+    event.target.value = '';
+    renderTudo();
+    alert(
+      `Importação de Padrão de Paletização concluída!\n\n` +
+      `Materiais novos criados (sem cadastro de SKU prévio): ${criados}\n` +
+      `Materiais complementados: ${atualizados}\n` +
+      `Linhas ignoradas (sem código): ${ignorados}`
+    );
+  }
+
+  function renderSaldo() {
+    const tbody = document.querySelector('#tabelaSaldo tbody');
+    const msgVazio = document.getElementById('msgSaldoVazio');
+    let saldos = calcularSaldo();
+
+    const fPos = filtroPosicao.value.trim().toLowerCase();
+    const fMat = filtroMaterial.value.trim().toLowerCase();
+    if (fPos) saldos = saldos.filter(s => s.posicao.toLowerCase().includes(fPos));
+    if (fMat) saldos = saldos.filter(s => s.material.toLowerCase().includes(fMat));
+
+    tbody.innerHTML = '';
+    if (saldos.length === 0) {
+      msgVazio.style.display = 'block';
+      document.getElementById('tabelaSaldo').style.display = 'none';
+      return;
+    }
+    msgVazio.style.display = 'none';
+    document.getElementById('tabelaSaldo').style.display = 'table';
+
+    saldos.forEach(s => {
+      const tr = document.createElement('tr');
+      const saldoClass = s.saldo < 0 ? 'neg' : 'pos';
+      tr.innerHTML = `
+        <td>${s.posicao}</td>
+        <td>${s.material}</td>
+        <td class="${saldoClass}">${s.saldo.toLocaleString('pt-BR')}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ============== HISTÓRICO ==============
+  function renderHistorico() {
+    const tbody = document.querySelector('#tabelaHistorico tbody');
+    const msgVazio = document.getElementById('msgHistVazio');
+    tbody.innerHTML = '';
+    if (movimentacoes.length === 0) {
+      msgVazio.style.display = 'block';
+      document.getElementById('tabelaHistorico').style.display = 'none';
+      return;
+    }
+    msgVazio.style.display = 'none';
+    document.getElementById('tabelaHistorico').style.display = 'table';
+
+    [...movimentacoes].reverse().forEach(m => {
+      const usu = getUsuario(m.usuarioId);
+      const end = getEndereco(m.enderecoId);
+      const mat = getMaterial(m.materialId);
+      const tipoClass = m.tipo === 'entrada' ? 'entrada' : 'saida';
+      const tipoLabel = m.tipo === 'entrada' ? 'Entrada' : 'Saída';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${m.dataHora}</td>
+        <td>${usu ? usu.nome : '(removido)'}</td>
+        <td>${end ? end.codigo : '(removido)'}</td>
+        <td>${mat ? mat.codigo + ' - ' + mat.descricao : '(removido)'}</td>
+        <td class="${tipoClass}">${tipoLabel}</td>
+        <td>${m.quantidade.toLocaleString('pt-BR')}</td>
+        <td>${m.observacao || '-'}</td>
+        <td class="actions-col"><button class="btn danger" onclick="removerMovimentacao(${m.id})">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ============== RENDER GERAL ==============
+  function renderTudo() {
+    renderUsuarios();
+    renderVeiculos();
+    renderCargasProgramadas();
+    renderViagens();
+    renderStatusFrota();
+    renderEnderecos();
+    renderMateriais();
+    atualizarSelects();
+    renderSaldo();
+    renderHistorico();
+    renderSolicitacoes();
+    renderFilaSolicitacoes();
+    renderSolicitacoesVerificadas();
+    renderSolicitacoesMaterial();
+    renderVerificacaoEstoque();
+    renderApontamentoPendente();
+    renderApontamentoRealizado();
+    renderAlocacaoPiso();
+    atualizarBadgesSolicitacao();
+  }
+
+  renderTudo();
 </script>
 
 </body>
-
 </html>
