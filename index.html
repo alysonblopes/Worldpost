@@ -522,7 +522,7 @@
 
 <div class="mobile-topbar">
   <button class="hamburger" id="hamburgerBtn" aria-label="Abrir menu">☰</button>
-  <div class="title">📦 Gestor de Pedidos</div>
+  <div class="title">📦 Sistema WMS</div>
 </div>
 
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -532,7 +532,7 @@
 <aside class="sidebar" id="sidebar">
   <button class="sidebar-toggle" id="sidebarToggle" title="Expandir/Recolher menu">‹</button>
   <div class="brand">
-    <h1>📦 <span class="txt">Gestor de Pedidos</span></h1>
+    <h1>📦 <span class="txt">Sistema WMS</span></h1>
     <div class="subtitle">Cadastros e controle de movimentações</div>
   </div>
 
@@ -1340,6 +1340,20 @@
 </div>
 
 <script>
+  // Garante que crypto.randomUUID sempre exista, mesmo em navegadores mais antigos
+  // ou contextos sem suporte nativo — sem isso, qualquer cadastro (usuário, material,
+  // movimentação etc.) travaria com erro de "crypto.randomUUID is not a function".
+  if (typeof crypto === 'undefined') { window.crypto = {}; }
+  if (typeof crypto.randomUUID !== 'function') {
+    crypto.randomUUID = function() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    };
+  }
+
   // ======================================================================
   // INTEGRAÇÃO COM SUPABASE — preencha as duas linhas abaixo com os dados
   // do seu projeto (Supabase → Project Settings → API).
@@ -1349,11 +1363,27 @@
   const SUPABASE_URL = 'https://viqezviwijbauuibcjqf.supabase.co';       // <-- ATUALIZAR AQUI
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcWV6dml3aWpiYXV1aWJjanFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MDczMjMsImV4cCI6MjA5NjQ4MzMyM30.0dxM31DPkvtw5sNKbvd3JrkAbR5tNb89ppbOgJBg9jE'; // <-- ATUALIZAR AQUI
 
-  const supabaseConfigurado = !SUPABASE_URL.includes('COLE_AQUI') && !SUPABASE_ANON_KEY.includes('COLE_AQUI');
-  const supabase = supabaseConfigurado ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+  let supabaseConfigurado = !SUPABASE_URL.includes('COLE_AQUI') && !SUPABASE_ANON_KEY.includes('COLE_AQUI');
+  let supabase = null;
+
+  // Qualquer problema aqui (biblioteca não carregou, URL inválida, bloqueio de rede, etc.)
+  // NUNCA pode travar o restante do sistema — por isso fica isolado num try/catch.
+  // Sem isso, um erro nesta linha impede até o carregamento das telas em memória.
+  if (supabaseConfigurado) {
+    try {
+      if (typeof window.supabase === 'undefined') {
+        throw new Error('Biblioteca @supabase/supabase-js não carregou (verifique conexão com a internet ou bloqueadores de script).');
+      }
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch (err) {
+      console.error('Supabase: falha ao inicializar o client — o sistema vai continuar funcionando apenas em memória.', err);
+      supabase = null;
+      supabaseConfigurado = false;
+    }
+  }
 
   if (!supabaseConfigurado) {
-    console.warn('Supabase não configurado — preencha SUPABASE_URL e SUPABASE_ANON_KEY no início do <script>. Rodando apenas em memória (os dados não persistem ao recarregar a página).');
+    console.warn('Supabase não configurado (ou falhou ao iniciar) — preencha SUPABASE_URL e SUPABASE_ANON_KEY no início do <script>. Rodando apenas em memória (os dados não persistem ao recarregar a página).');
   }
 
   // Mapa de campos JS (camelCase) -> coluna no banco (snake_case), por tabela.
