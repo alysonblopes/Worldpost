@@ -1669,6 +1669,10 @@
   const SUPABASE_URL = 'https://viqezviwijbauuibcjqf.supabase.co';       // <-- ATUALIZAR AQUI
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcWV6dml3aWpiYXV1aWJjanFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MDczMjMsImV4cCI6MjA5NjQ4MzMyM30.0dxM31DPkvtw5sNKbvd3JrkAbR5tNb89ppbOgJBg9jE'; // <-- ATUALIZAR AQUI
 
+  // Mude para "false" se não quiser exigir login, mesmo com usuários cadastrados —
+  // o sistema libera acesso direto para todo mundo, como antes de existir a tela de login.
+  const EXIGIR_LOGIN = true;
+
   let supabaseConfigurado = !SUPABASE_URL.includes('COLE_AQUI') && !SUPABASE_ANON_KEY.includes('COLE_AQUI');
   let supabaseClient = null;
 
@@ -1881,8 +1885,8 @@
   }
 
   async function inicializarAutenticacao() {
-    // Sem Supabase configurado, ou sem nenhum usuário cadastrado ainda: libera acesso direto
-    if (!supabaseConfigurado || usuarios.length === 0) {
+    // Sem Supabase configurado, sem usuários cadastrados, ou login desligado no interruptor: acesso direto
+    if (!supabaseConfigurado || usuarios.length === 0 || !EXIGIR_LOGIN) {
       mostrarApp();
       return;
     }
