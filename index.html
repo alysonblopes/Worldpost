@@ -1916,14 +1916,29 @@
     const erroEl = document.getElementById('erroLogin');
     erroEl.style.display = 'none';
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
-    if (error) {
-      erroEl.textContent = 'E-mail ou senha inválidos.';
+    try {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
+      if (error) {
+        console.error('Erro de autenticação (login):', error);
+        erroEl.textContent = 'E-mail ou senha inválidos.';
+        erroEl.style.display = 'block';
+        return;
+      }
+      await entrarComSessao(data.session);
+    } catch (err) {
+      erroEl.textContent = mensagemDeErroAuth(err, 'login - falha inesperada');
       erroEl.style.display = 'block';
-      return;
     }
-    await entrarComSessao(data.session);
   });
+
+  // Extrai uma mensagem de erro segura para mostrar na tela, sempre logando o erro
+  // bruto no console (F12) para diagnóstico — nunca deixa aparecer "{}" ou similar.
+  function mensagemDeErroAuth(error, contexto) {
+    console.error(`Erro de autenticação (${contexto}):`, error);
+    if (error && typeof error.message === 'string' && error.message.trim()) return error.message;
+    if (typeof error === 'string' && error.trim()) return error;
+    return 'Não foi possível completar essa ação agora. Veja o Console (F12) para detalhes técnicos.';
+  }
 
   document.getElementById('formPrimeiroAcesso').addEventListener('submit', async e => {
     e.preventDefault();
@@ -1939,20 +1954,26 @@
       return;
     }
 
-    const { data, error } = await supabaseClient.auth.signUp({ email, password: senha });
-    if (error) {
-      erroEl.textContent = error.message.toLowerCase().includes('already registered')
-        ? 'Esse e-mail já tem senha criada — use "Entrar" ou "Esqueci minha senha".'
-        : error.message;
-      erroEl.style.display = 'block';
-      return;
-    }
+    try {
+      const { data, error } = await supabaseClient.auth.signUp({ email, password: senha });
+      if (error) {
+        const msg = mensagemDeErroAuth(error, 'primeiro acesso');
+        erroEl.textContent = msg.toLowerCase().includes('already registered')
+          ? 'Esse e-mail já tem senha criada — use "Entrar" ou "Esqueci minha senha".'
+          : msg;
+        erroEl.style.display = 'block';
+        return;
+      }
 
-    if (data.session) {
-      await entrarComSessao(data.session);
-    } else {
-      alert('Conta criada! Se a confirmação de e-mail estiver habilitada no projeto, verifique sua caixa de entrada antes de entrar.');
-      mostrarTelaAuth('login');
+      if (data.session) {
+        await entrarComSessao(data.session);
+      } else {
+        alert('Conta criada! Se a confirmação de e-mail estiver habilitada no projeto, verifique sua caixa de entrada antes de entrar.');
+        mostrarTelaAuth('login');
+      }
+    } catch (err) {
+      erroEl.textContent = mensagemDeErroAuth(err, 'primeiro acesso - falha inesperada');
+      erroEl.style.display = 'block';
     }
   });
 
@@ -1960,13 +1981,18 @@
     e.preventDefault();
     const email = document.getElementById('esqueciEmail').value.trim();
     const msgEl = document.getElementById('msgEsqueciSenha');
-    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.href.split('#')[0].split('?')[0]
-    });
-    msgEl.style.display = 'block';
-    msgEl.textContent = error
-      ? 'Não foi possível enviar o e-mail agora. Tente novamente em alguns minutos.'
-      : 'Se esse e-mail estiver cadastrado, um link de redefinição foi enviado. Confira sua caixa de entrada.';
+    try {
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.href.split('#')[0].split('?')[0]
+      });
+      msgEl.style.display = 'block';
+      msgEl.textContent = error
+        ? mensagemDeErroAuth(error, 'esqueci senha')
+        : 'Se esse e-mail estiver cadastrado, um link de redefinição foi enviado. Confira sua caixa de entrada.';
+    } catch (err) {
+      msgEl.style.display = 'block';
+      msgEl.textContent = mensagemDeErroAuth(err, 'esqueci senha - falha inesperada');
+    }
   });
 
   document.getElementById('formNovaSenha').addEventListener('submit', async e => {
@@ -1975,15 +2001,20 @@
     const erroEl = document.getElementById('erroNovaSenha');
     erroEl.style.display = 'none';
 
-    const { error } = await supabaseClient.auth.updateUser({ password: novaSenha });
-    if (error) {
-      erroEl.textContent = 'Não foi possível salvar a nova senha. Tente novamente.';
+    try {
+      const { error } = await supabaseClient.auth.updateUser({ password: novaSenha });
+      if (error) {
+        erroEl.textContent = mensagemDeErroAuth(error, 'nova senha');
+        erroEl.style.display = 'block';
+        return;
+      }
+      alert('Senha redefinida com sucesso!');
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      await entrarComSessao(session);
+    } catch (err) {
+      erroEl.textContent = mensagemDeErroAuth(err, 'nova senha - falha inesperada');
       erroEl.style.display = 'block';
-      return;
     }
-    alert('Senha redefinida com sucesso!');
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    await entrarComSessao(session);
   });
 
   async function sairDaConta() {
