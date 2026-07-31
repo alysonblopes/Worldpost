@@ -1671,7 +1671,7 @@
 
   // Mude para "false" se não quiser exigir login, mesmo com usuários cadastrados —
   // o sistema libera acesso direto para todo mundo, como antes de existir a tela de login.
-  const EXIGIR_LOGIN = true;
+  const EXIGIR_LOGIN = false; // congelado por enquanto — mude para "true" quando quiser retomar o login
 
   let supabaseConfigurado = !SUPABASE_URL.includes('COLE_AQUI') && !SUPABASE_ANON_KEY.includes('COLE_AQUI');
   let supabaseClient = null;
