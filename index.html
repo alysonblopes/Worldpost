@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Saldo de Material por Posição</title>
 <style>
   * { box-sizing: border-box; }
@@ -513,12 +514,101 @@
     height: 15px;
     cursor: pointer;
   }
+
+  .gantt-wrap { overflow-x: auto; border: 1px solid #e2e6ec; border-radius: 10px; }
+  .gantt-grid { display: block; min-width: max-content; }
+  .gantt-header-row { display: flex; position: sticky; top: 0; background: #1f3a5f; z-index: 3; border-bottom: 2px solid #16283f; }
+  .gantt-label-col {
+    width: 210px; min-width: 210px; flex-shrink: 0; padding: 8px 12px; font-weight: 700; font-size: 12.5px;
+    background: #1f3a5f; color: #fff; position: sticky; left: 0; z-index: 4; border-right: 1px solid #16283f;
+    display: flex; align-items: center;
+  }
+  .gantt-horas-col {
+    width: 78px; min-width: 78px; flex-shrink: 0; padding: 8px 6px; font-weight: 700; font-size: 11.5px; text-align: center;
+    background: #1f3a5f; color: #fff; position: sticky; left: 210px; z-index: 4; border-right: 2px solid #16283f;
+  }
+  .gantt-day { width: 46px; min-width: 46px; flex-shrink: 0; text-align: center; font-size: 11px; color: #eaf0f8; padding: 8px 0; border-right: 1px solid rgba(255,255,255,0.12); }
+  .gantt-day.hoje { background: #b45309; font-weight: 800; color: #fff; }
+
+  .gantt-categoria-row {
+    display: flex; align-items: center; background: #eef2f7; border-bottom: 1px solid #dfe3e8;
+    cursor: pointer; font-weight: 800; font-size: 12.5px; color: #1f3a5f; min-height: 32px;
+  }
+  .gantt-categoria-row .gantt-label-col { background: #eef2f7; color: #1f3a5f; position: sticky; left: 0; gap: 6px; }
+  .gantt-categoria-arrow { display: inline-block; transition: transform 0.15s; margin-right: 4px; }
+  .gantt-categoria-arrow.fechado { transform: rotate(-90deg); }
+
+  .gantt-row { display: flex; align-items: stretch; border-bottom: 1px solid #eef0f3; min-height: 44px; }
+  .gantt-row:hover { background: #fafbfc; }
+  .gantt-row .gantt-label-col {
+    position: sticky; left: 0; background: #fff; font-weight: 600; font-size: 12px; color: #222;
+    padding: 6px 12px; border-right: 1px solid #dfe3e8; z-index: 2; line-height: 1.3;
+  }
+  .gantt-row .gantt-horas-col { position: sticky; left: 210px; background: #fff; color: #444; z-index: 2; border-right: 2px solid #dfe3e8; display:flex; align-items:center; justify-content:center; }
+  .gantt-row:hover .gantt-label-col, .gantt-row:hover .gantt-horas-col { background: #fafbfc; }
+
+  .gantt-track { position: relative; display: flex; }
+  .gantt-bar {
+    position: absolute;
+    top: 6px;
+    height: 32px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.25;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 2px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+  .gantt-bar .gantt-bar-linha1 { font-weight: 800; }
+  .gantt-bar .gantt-bar-linha2 { opacity: 0.92; }
+  .gantt-bar.atrasado { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+  .gantt-bar.concluido { background: linear-gradient(135deg, #6b7280, #4b5563); }
+  .gantt-bar.emandamento { background: linear-gradient(135deg, #d97706, #b45309); }
+  .campo-mapeamento-select { min-width: 180px; }
+
+  .tela-auth {
+    position: fixed; inset: 0; z-index: 1000;
+    background: linear-gradient(135deg, #1f3a5f, #16283f);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .auth-card {
+    background: #fff; border-radius: 14px; padding: 32px 28px;
+    width: 100%; max-width: 400px; box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  }
+  .auth-logo { text-align: center; font-size: 20px; font-weight: 800; color: #1f3a5f; margin-bottom: 18px; }
+  .auth-form h2 { text-align: center; margin: 0 0 14px 0; color: #1f3a5f; }
+  .auth-form label { display: block; font-size: 13px; font-weight: 600; color: #444; margin: 12px 0 4px; }
+  .auth-form input {
+    width: 100%; padding: 10px 12px; border: 1px solid #d7dbe0; border-radius: 8px; font-size: 14px; box-sizing: border-box;
+  }
+  .auth-form .btn { margin-top: 18px; }
+  .auth-erro { color: #c0392b; font-size: 13px; margin-top: 10px; text-align: center; }
+  .auth-hint { color: #666; font-size: 12.5px; margin-top: 10px; text-align: center; }
+  .auth-links { display: flex; flex-direction: column; gap: 8px; align-items: center; margin-top: 16px; font-size: 13px; }
+  .auth-links a { color: #2563eb; text-decoration: none; }
+  .auth-links a:hover { text-decoration: underline; }
+  .sidebar-usuario-logado {
+    padding: 10px 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 12.5px; color: #cfd9e8;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .sidebar-usuario-logado a { color: #93c5fd; text-decoration: none; font-weight: 600; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
+<div id="wrapperAppPrincipal" style="display:none;">
 
 <div class="mobile-topbar">
   <button class="hamburger" id="hamburgerBtn" aria-label="Abrir menu">☰</button>
@@ -550,6 +640,7 @@
       <button data-page="pageVerificacaoEstoque"><span class="ico">🔍</span><span class="txt"> Verificação de Solicitações</span><span class="nav-badge" id="badgeVerificacaoEstoque">0</span></button>
       <button data-page="pageApontamentoProducao"><span class="ico">🏭</span><span class="txt"> Apontamento de Material Produzido</span></button>
       <button data-page="pageAlocacaoPiso"><span class="ico">🅿️</span><span class="txt"> Alocar Material do Piso</span><span class="nav-badge" id="badgeAlocacaoPiso">0</span></button>
+      <button data-page="pageSequenciamentoProducao"><span class="ico">📅</span><span class="txt"> Sequenciamento de Produção</span></button>
     </nav>
   </div>
 
@@ -584,6 +675,11 @@
     <nav id="configNav">
       <button data-page="pageUsuarios"><span class="ico">👤</span><span class="txt"> Usuários</span></button>
     </nav>
+  </div>
+
+  <div class="sidebar-usuario-logado" id="sidebarUsuarioLogado" style="display:none;">
+    <span id="sidebarNomeUsuarioLogado"></span>
+    <a href="#" onclick="sairDaConta(); return false;">Sair</a>
   </div>
 </aside>
 
@@ -860,6 +956,10 @@
           <input type="text" id="usuMatricula" placeholder="Ex: 00123" required>
         </div>
         <div>
+          <label>E-mail (necessário para login e redefinição de senha)</label>
+          <input type="email" id="usuEmail" placeholder="Ex: joao@empresa.com">
+        </div>
+        <div>
           <label>Cargo</label>
           <select id="usuCargo">
             <option value="Administrador">Administrador</option>
@@ -871,6 +971,10 @@
           <button type="submit" class="btn">Cadastrar Usuário</button>
         </div>
       </form>
+      <p class="toolbar-hint">
+        Cadastre aqui só nome, matrícula, e-mail e cargo. A pessoa cria a própria senha depois, na tela de
+        login → "Primeiro acesso", usando esse mesmo e-mail.
+      </p>
     </div>
     <div class="card">
       <h2>Usuários Cadastrados</h2>
@@ -879,7 +983,7 @@
       <table id="tabelaUsuarios">
         <thead><tr>
           <th style="width:26px;"></th>
-          <th>Matrícula</th><th>Nome</th><th>Cargo</th>
+          <th>Matrícula</th><th>Nome</th><th>E-mail</th><th>Cargo</th>
           <th class="actions-col">Ação</th>
         </tr></thead>
         <tbody></tbody>
@@ -1169,6 +1273,114 @@
     </div>
   </div>
 
+  <!-- ===================== SEQUENCIAMENTO DE PRODUÇÃO (ESTOQUE) ===================== -->
+  <div class="page" id="pageSequenciamentoProducao">
+    <div class="page-title">📅 Estoque / Sequenciamento de Produção</div>
+    <div class="page-subtitle">Programação de produção — busca por produto e Gantt do que ainda vai produzir</div>
+
+    <div class="card">
+      <h2>📤 Importar Planilha de Programação</h2>
+      <div class="toolbar">
+        <label class="btn-file">
+          📤 Importar Planilha de Programação
+          <input type="file" id="inputImportarSequenciamento" accept=".xlsx,.xls,.csv" onchange="importarPlanilhaSequenciamento(event)">
+        </label>
+      </div>
+      <p class="toolbar-hint">
+        Suba a planilha exportada da sua tabela de programação (ex: do Power Query/Excel). Todas as colunas da
+        planilha são trazidas — não precisa ter nomes específicos. Depois de importar, configure abaixo qual
+        coluna é qual informação.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>⚙️ Configuração de Campos</h2>
+      <p class="toolbar-hint">
+        Diga qual coluna da sua planilha corresponde a cada informação abaixo. Isso só precisa ser feito uma vez
+        (ou de novo, se as colunas da planilha mudarem). As opções vêm automaticamente das colunas
+        encontradas na última importação.
+      </p>
+      <div id="avisoSemDadosSequenciamento" class="empty-msg" style="display:none;">
+        ⚠ Nenhuma planilha importada ainda. Suba um arquivo no card acima e depois configure os campos aqui.
+      </div>
+      <form class="grid" id="formMapeamentoSequenciamento">
+        <div>
+          <label>Coluna Chave (identifica cada linha)</label>
+          <select class="campo-mapeamento-select" id="mapCampoChave"><option value="">Selecione...</option></select>
+        </div>
+        <div>
+          <label>Coluna do Produto (código)</label>
+          <select class="campo-mapeamento-select" id="mapCampoProduto"><option value="">Selecione...</option></select>
+        </div>
+        <div>
+          <label>Coluna da Descrição</label>
+          <select class="campo-mapeamento-select" id="mapCampoDescricao"><option value="">Selecione...</option></select>
+        </div>
+        <div>
+          <label>Coluna de Data/Hora Início</label>
+          <select class="campo-mapeamento-select" id="mapCampoDataInicio"><option value="">Selecione...</option></select>
+        </div>
+        <div>
+          <label>Coluna de Data/Hora Fim</label>
+          <select class="campo-mapeamento-select" id="mapCampoDataFim"><option value="">Selecione...</option></select>
+        </div>
+        <div>
+          <label>Coluna de Quantidade</label>
+          <select class="campo-mapeamento-select" id="mapCampoQuantidade"><option value="">Selecione...</option></select>
+        </div>
+        <div>
+          <label>Coluna de Máquina / Linha</label>
+          <select class="campo-mapeamento-select" id="mapCampoMaquina"><option value="">Selecione...</option></select>
+        </div>
+        <div>
+          <label>Coluna de Categoria da Máquina (opcional)</label>
+          <select class="campo-mapeamento-select" id="mapCampoCategoriaMaquina"><option value="">Selecione...</option></select>
+        </div>
+        <div>
+          <label>Coluna de Cliente (opcional)</label>
+          <select class="campo-mapeamento-select" id="mapCampoCliente"><option value="">Selecione...</option></select>
+        </div>
+        <div>
+          <label>Coluna de Sequência / Ordem</label>
+          <select class="campo-mapeamento-select" id="mapCampoSequencia"><option value="">Selecione...</option></select>
+        </div>
+        <div>
+          <label>Coluna de Status</label>
+          <select class="campo-mapeamento-select" id="mapCampoStatus"><option value="">Selecione...</option></select>
+        </div>
+        <div>
+          <button type="submit" class="btn">Salvar Mapeamento</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>🔍 Buscar Produto</h2>
+      <div class="filtro">
+        <input type="text" id="filtroSequenciamento" placeholder="Buscar por código ou descrição do produto...">
+      </div>
+      <div class="table-wrap">
+      <table id="tabelaBuscaSequenciamento">
+        <thead>
+          <tr>
+            <th>Produto</th><th>Descrição</th><th>Início</th><th>Fim</th>
+            <th>Quantidade</th><th>Máquina</th><th>Sequência</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgBuscaSequenciamentoVazio" class="empty-msg" style="display:none;">Nenhum resultado encontrado.</div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Gantt — O que ainda vai produzir</h2>
+      <p class="toolbar-hint">Mostra os itens cuja data de fim (ou início, se o fim não estiver preenchido) ainda não passou, ordenados por início.</p>
+      <div id="ganttSequenciamento" class="gantt-wrap"></div>
+      <div id="msgGanttVazio" class="empty-msg" style="display:none;">Nada pendente de produção no período, ou o mapeamento de campos ainda não foi configurado.</div>
+    </div>
+  </div>
+
   <!-- ===================== SOLICITAÇÃO DE VERIFICAÇÃO DE ESTOQUE (COMERCIAL) ===================== -->
   <div class="page" id="pageSolicitacaoVerificacao">
     <div class="page-title">📝 Comercial / Solicitação de verificação de Estoque</div>
@@ -1339,6 +1551,100 @@
 
 </div>
 
+</div><!-- fim de #wrapperAppPrincipal -->
+
+<!-- ===================== TELA DE LOGIN ===================== -->
+<div id="telaLogin" class="tela-auth" style="display:none;">
+  <div class="auth-card">
+    <div class="auth-logo">📦 Sistema WMS</div>
+
+    <!-- Login -->
+    <form id="formLogin" class="auth-form">
+      <h2>Entrar</h2>
+      <label>E-mail</label>
+      <input type="email" id="loginEmail" required autocomplete="username">
+      <label>Senha</label>
+      <input type="password" id="loginSenha" required autocomplete="current-password">
+      <button type="submit" class="btn" style="width:100%;">Entrar</button>
+      <p id="erroLogin" class="auth-erro" style="display:none;"></p>
+      <div class="auth-links">
+        <a href="#" onclick="mostrarTelaAuth('esqueci'); return false;">Esqueci minha senha</a>
+        <a href="#" onclick="mostrarTelaAuth('primeiroAcesso'); return false;">Primeiro acesso / criar senha</a>
+      </div>
+    </form>
+
+    <!-- Primeiro acesso (define a senha pela primeira vez, a partir de um e-mail já cadastrado) -->
+    <form id="formPrimeiroAcesso" class="auth-form" style="display:none;">
+      <h2>Primeiro Acesso</h2>
+      <p class="auth-hint">Seu e-mail precisa já estar cadastrado por um administrador em Configurações → Usuários.</p>
+      <label>E-mail cadastrado</label>
+      <input type="email" id="primeiroAcessoEmail" required autocomplete="username">
+      <label>Crie uma senha</label>
+      <input type="password" id="primeiroAcessoSenha" required minlength="6" autocomplete="new-password">
+      <button type="submit" class="btn" style="width:100%;">Criar senha e entrar</button>
+      <p id="erroPrimeiroAcesso" class="auth-erro" style="display:none;"></p>
+      <div class="auth-links"><a href="#" onclick="mostrarTelaAuth('login'); return false;">Voltar para o login</a></div>
+    </form>
+
+    <!-- Esqueci minha senha -->
+    <form id="formEsqueciSenha" class="auth-form" style="display:none;">
+      <h2>Redefinir Senha</h2>
+      <p class="auth-hint">Enviaremos um link de redefinição para o seu e-mail cadastrado.</p>
+      <label>E-mail</label>
+      <input type="email" id="esqueciEmail" required autocomplete="username">
+      <button type="submit" class="btn" style="width:100%;">Enviar e-mail de redefinição</button>
+      <p id="msgEsqueciSenha" class="auth-hint" style="display:none;"></p>
+      <div class="auth-links"><a href="#" onclick="mostrarTelaAuth('login'); return false;">Voltar para o login</a></div>
+    </form>
+
+    <!-- Definir nova senha (chega aqui pelo link do e-mail) -->
+    <form id="formNovaSenha" class="auth-form" style="display:none;">
+      <h2>Defina sua Nova Senha</h2>
+      <label>Nova senha</label>
+      <input type="password" id="novaSenhaInput" required minlength="6" autocomplete="new-password">
+      <button type="submit" class="btn" style="width:100%;">Salvar nova senha</button>
+      <p id="erroNovaSenha" class="auth-erro" style="display:none;"></p>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== PERFIL RESTRITO (usuários não-administradores) ===================== -->
+<div id="telaPerfilRestrito" class="tela-auth" style="display:none;">
+  <div class="auth-card" style="max-width:480px;">
+    <div class="auth-logo">📦 Sistema WMS</div>
+    <h2 style="text-align:center; margin-bottom:4px;">Meu Perfil</h2>
+    <p class="auth-hint" style="text-align:center;">Seu acesso é limitado à edição do seu próprio perfil.</p>
+
+    <div style="text-align:center; margin:16px 0;">
+      <img id="perfilFotoPreview" src="" alt="Foto de perfil" style="width:96px; height:96px; border-radius:50%; object-fit:cover; background:#e2e6ec; display:none;">
+      <div id="perfilFotoPlaceholder" style="width:96px; height:96px; border-radius:50%; background:#e2e6ec; margin:0 auto; display:flex; align-items:center; justify-content:center; font-size:36px;">👤</div>
+      <div style="margin-top:8px;">
+        <label class="btn-file" style="font-size:12.5px; padding:6px 12px;">
+          Trocar foto
+          <input type="file" id="perfilFotoInput" accept="image/*" onchange="preverFotoPerfil(event)">
+        </label>
+      </div>
+    </div>
+
+    <form id="formPerfilRestrito" class="auth-form">
+      <label>Nome completo</label>
+      <input type="text" id="perfilNome" required>
+      <label>E-mail</label>
+      <input type="email" id="perfilEmail" readonly style="background:#f3f4f6;">
+      <label>Matrícula</label>
+      <input type="text" id="perfilMatricula" readonly style="background:#f3f4f6;">
+      <button type="submit" class="btn" style="width:100%;">Salvar Perfil</button>
+      <p id="msgPerfilRestrito" class="auth-hint" style="display:none;"></p>
+    </form>
+
+    <div class="auth-links" style="justify-content:space-between; display:flex;">
+      <a href="#" onclick="solicitarRedefinicaoSenhaPerfil(); return false;">Redefinir minha senha</a>
+      <a href="#" onclick="sairDaConta(); return false;">Sair</a>
+    </div>
+  </div>
+</div>
+
+
 <script>
   // Garante que crypto.randomUUID sempre exista, mesmo em navegadores mais antigos
   // ou contextos sem suporte nativo — sem isso, qualquer cadastro (usuário, material,
@@ -1364,7 +1670,7 @@
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcWV6dml3aWpiYXV1aWJjanFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MDczMjMsImV4cCI6MjA5NjQ4MzMyM30.0dxM31DPkvtw5sNKbvd3JrkAbR5tNb89ppbOgJBg9jE'; // <-- ATUALIZAR AQUI
 
   let supabaseConfigurado = !SUPABASE_URL.includes('COLE_AQUI') && !SUPABASE_ANON_KEY.includes('COLE_AQUI');
-  let supabase = null;
+  let supabaseClient = null;
 
   // Qualquer problema aqui (biblioteca não carregou, URL inválida, bloqueio de rede, etc.)
   // NUNCA pode travar o restante do sistema — por isso fica isolado num try/catch.
@@ -1374,10 +1680,10 @@
       if (typeof window.supabase === 'undefined') {
         throw new Error('Biblioteca @supabase/supabase-js não carregou (verifique conexão com a internet ou bloqueadores de script).');
       }
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     } catch (err) {
       console.error('Supabase: falha ao inicializar o client — o sistema vai continuar funcionando apenas em memória.', err);
-      supabase = null;
+      supabaseClient = null;
       supabaseConfigurado = false;
     }
   }
@@ -1390,7 +1696,7 @@
   // Mantido explícito (em vez de conversão automática) para evitar ambiguidade
   // em siglas como "OP", "NF", "kg" dentro dos nomes de campo.
   const MAPA_CAMPOS = {
-    usuarios: { matricula: 'matricula', nome: 'nome', cargo: 'cargo', permissoes: 'permissoes' },
+    usuarios: { matricula: 'matricula', nome: 'nome', cargo: 'cargo', permissoes: 'permissoes', email: 'email', fotoUrl: 'foto_url', authUserId: 'auth_user_id' },
     enderecos: { codigo: 'codigo', rua: 'rua', bloco: 'bloco', nivel: 'nivel', capacidadeKg: 'capacidade_kg', status: 'status', observacao: 'observacao', descricao: 'descricao' },
     materiais: {
       codigo: 'codigo', descricao: 'descricao', pesoUnitarioKg: 'peso_unitario_kg', familia: 'familia', unidade: 'unidade',
@@ -1413,7 +1719,14 @@
     veiculos: { placa: 'placa', modelo: 'modelo', capacidadeKg: 'capacidade_kg', capacidadePallets: 'capacidade_pallets', transportadora: 'transportadora', status: 'status', observacao: 'observacao' },
     cargas_programadas: { numeroOC: 'numero_oc', janelaCarregamento: 'janela_carregamento', modalidade: 'modalidade', transportadora: 'transportadora', tipoVeiculo: 'tipo_veiculo', placa: 'placa', veiculoId: 'veiculo_id', status: 'status' },
     itens_carga: { cargaId: 'carga_id', item: 'item', quantidade: 'quantidade', quantidadePallets: 'quantidade_pallets', cliente: 'cliente', destino: 'destino', nf: 'nf', janelaEntrega: 'janela_entrega', status: 'status' },
-    viagens: { veiculoId: 'veiculo_id', cargaId: 'carga_id', motorista: 'motorista', dataHora: 'data_hora', previsaoChegada: 'previsao_chegada', origem: 'origem', destino: 'destino', status: 'status', observacoes: 'observacoes' }
+    viagens: { veiculoId: 'veiculo_id', cargaId: 'carga_id', motorista: 'motorista', dataHora: 'data_hora', previsaoChegada: 'previsao_chegada', origem: 'origem', destino: 'destino', status: 'status', observacoes: 'observacoes' },
+    sequenciamento_producao_raw: { dados: 'dados', sincronizadoEm: 'sincronizado_em' },
+    sequenciamento_producao_mapeamento: {
+      campoChave: 'campo_chave', campoProduto: 'campo_produto', campoDescricao: 'campo_descricao', campoDataInicio: 'campo_data_inicio',
+      campoDataFim: 'campo_data_fim', campoQuantidade: 'campo_quantidade', campoMaquina: 'campo_maquina',
+      campoCategoriaMaquina: 'campo_categoria_maquina', campoCliente: 'campo_cliente',
+      campoSequencia: 'campo_sequencia', campoStatus: 'campo_status'
+    }
   };
 
   function paraBanco(tabela, objJS) {
@@ -1438,7 +1751,7 @@
   // Insere um registro (o id já deve vir preenchido com crypto.randomUUID() pelo código que chama)
   async function supaInserir(tabela, objJS) {
     if (!supabaseConfigurado) return;
-    const { error } = await supabase.from(tabela).insert(paraBanco(tabela, objJS));
+    const { error } = await supabaseClient.from(tabela).insert(paraBanco(tabela, objJS));
     if (error) console.error(`Supabase: erro ao inserir em "${tabela}":`, error.message);
   }
 
@@ -1447,19 +1760,19 @@
     if (!supabaseConfigurado) return;
     const linha = paraBanco(tabela, { id, ...camposJS });
     delete linha.id;
-    const { error } = await supabase.from(tabela).update(linha).eq('id', id);
+    const { error } = await supabaseClient.from(tabela).update(linha).eq('id', id);
     if (error) console.error(`Supabase: erro ao atualizar "${tabela}":`, error.message);
   }
 
   async function supaRemover(tabela, id) {
     if (!supabaseConfigurado) return;
-    const { error } = await supabase.from(tabela).delete().eq('id', id);
+    const { error } = await supabaseClient.from(tabela).delete().eq('id', id);
     if (error) console.error(`Supabase: erro ao remover de "${tabela}":`, error.message);
   }
 
   async function supaListar(tabela) {
     if (!supabaseConfigurado) return [];
-    const { data, error } = await supabase.from(tabela).select('*');
+    const { data, error } = await supabaseClient.from(tabela).select('*');
     if (error) { console.error(`Supabase: erro ao carregar "${tabela}":`, error.message); return []; }
     return data.map(linha => paraJS(tabela, linha));
   }
@@ -1470,26 +1783,261 @@
   async function carregarTudoDoSupabase() {
     if (!supabaseConfigurado) return;
     try {
-      const [u, en, mat, mov, solVer, fila, prod, apont, solMat, veic, cargas, itens, viag] = await Promise.all([
+      const [u, en, mat, mov, solVer, fila, prod, apont, solMat, veic, cargas, itens, viag, seqRaw, seqMap] = await Promise.all([
         supaListar('usuarios'), supaListar('enderecos'), supaListar('materiais'), supaListar('movimentacoes'),
         supaListar('solicitacoes_verificacao'), supaListar('fila_solicitacoes'), supaListar('producoes'),
         supaListar('apontamentos_producao'), supaListar('solicitacoes_material'), supaListar('veiculos'),
-        supaListar('cargas_programadas'), supaListar('itens_carga'), supaListar('viagens')
+        supaListar('cargas_programadas'), supaListar('itens_carga'), supaListar('viagens'),
+        supaListar('sequenciamento_producao_raw'), supaListar('sequenciamento_producao_mapeamento')
       ]);
       usuarios = u; enderecos = en; materiais = mat; movimentacoes = mov;
       solicitacoes = solVer; filaSolicitacoes = fila; producoes = prod;
       apontamentosProducao = apont; solicitacoesMaterial = solMat; veiculos = veic;
       cargasProgramadas = cargas; itensCarga = itens; viagens = viag;
+      sequenciamentoRaw = seqRaw;
+      mapeamentoSequenciamento = seqMap[0] || {};
     } catch (err) {
       console.error('Supabase: falha ao carregar dados iniciais:', err.message);
     }
   }
+
+  // ============== AUTENTICAÇÃO ==============
+  let usuarioLogado = null; // linha de "usuarios" correspondente à sessão logada no Supabase Auth
+  let perfilFotoBase64Temp = null;
+
+  function mostrarTelaAuth(tela) {
+    ['formLogin', 'formPrimeiroAcesso', 'formEsqueciSenha', 'formNovaSenha'].forEach(id => {
+      document.getElementById(id).style.display = 'none';
+    });
+    const mapa = { login: 'formLogin', primeiroAcesso: 'formPrimeiroAcesso', esqueci: 'formEsqueciSenha', novaSenha: 'formNovaSenha' };
+    document.getElementById(mapa[tela]).style.display = 'block';
+  }
+
+  function atualizarRodapeUsuarioLogado() {
+    const el = document.getElementById('sidebarUsuarioLogado');
+    const nomeEl = document.getElementById('sidebarNomeUsuarioLogado');
+    if (usuarioLogado) {
+      el.style.display = 'flex';
+      nomeEl.textContent = `${usuarioLogado.nome} (${usuarioLogado.cargo})`;
+    } else {
+      el.style.display = 'none';
+    }
+  }
+
+  function mostrarApp() {
+    document.getElementById('telaLogin').style.display = 'none';
+    document.getElementById('telaPerfilRestrito').style.display = 'none';
+    document.getElementById('wrapperAppPrincipal').style.display = 'block';
+    atualizarRodapeUsuarioLogado();
+  }
+
+  function mostrarLogin() {
+    document.getElementById('wrapperAppPrincipal').style.display = 'none';
+    document.getElementById('telaPerfilRestrito').style.display = 'none';
+    document.getElementById('telaLogin').style.display = 'flex';
+    mostrarTelaAuth('login');
+  }
+
+  function mostrarPerfilRestrito() {
+    document.getElementById('wrapperAppPrincipal').style.display = 'none';
+    document.getElementById('telaLogin').style.display = 'none';
+    document.getElementById('telaPerfilRestrito').style.display = 'flex';
+    document.getElementById('perfilNome').value = usuarioLogado.nome || '';
+    document.getElementById('perfilEmail').value = usuarioLogado.email || '';
+    document.getElementById('perfilMatricula').value = usuarioLogado.matricula || '';
+    if (usuarioLogado.fotoUrl) {
+      document.getElementById('perfilFotoPreview').src = usuarioLogado.fotoUrl;
+      document.getElementById('perfilFotoPreview').style.display = 'block';
+      document.getElementById('perfilFotoPlaceholder').style.display = 'none';
+    }
+  }
+
+  async function entrarComSessao(session) {
+    const email = session.user.email;
+    let usuario = usuarios.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
+
+    if (!usuario) {
+      const erroEl = document.getElementById('erroLogin');
+      erroEl.textContent = 'Seu login funcionou, mas esse e-mail não está cadastrado como usuário do sistema. Peça para um administrador te cadastrar em Configurações → Usuários.';
+      erroEl.style.display = 'block';
+      await supabaseClient.auth.signOut();
+      mostrarLogin();
+      return;
+    }
+
+    // Vincula o auth_user_id na primeira vez que reconhecemos esse e-mail
+    if (!usuario.authUserId) {
+      usuario.authUserId = session.user.id;
+      supaAtualizar('usuarios', usuario.id, { authUserId: session.user.id });
+    }
+
+    usuarioLogado = usuario;
+
+    if (usuario.cargo === 'Administrador') {
+      mostrarApp();
+    } else {
+      mostrarPerfilRestrito();
+    }
+  }
+
+  async function inicializarAutenticacao() {
+    // Sem Supabase configurado, ou sem nenhum usuário cadastrado ainda: libera acesso direto
+    if (!supabaseConfigurado || usuarios.length === 0) {
+      mostrarApp();
+      return;
+    }
+
+    // Detecta quando chegamos aqui pelo link de redefinição de senha do e-mail
+    supabaseClient.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        document.getElementById('wrapperAppPrincipal').style.display = 'none';
+        document.getElementById('telaPerfilRestrito').style.display = 'none';
+        document.getElementById('telaLogin').style.display = 'flex';
+        mostrarTelaAuth('novaSenha');
+      }
+    });
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) {
+      mostrarLogin();
+      return;
+    }
+    await entrarComSessao(session);
+  }
+
+  document.getElementById('formLogin').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const senha = document.getElementById('loginSenha').value;
+    const erroEl = document.getElementById('erroLogin');
+    erroEl.style.display = 'none';
+
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
+    if (error) {
+      erroEl.textContent = 'E-mail ou senha inválidos.';
+      erroEl.style.display = 'block';
+      return;
+    }
+    await entrarComSessao(data.session);
+  });
+
+  document.getElementById('formPrimeiroAcesso').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = document.getElementById('primeiroAcessoEmail').value.trim().toLowerCase();
+    const senha = document.getElementById('primeiroAcessoSenha').value;
+    const erroEl = document.getElementById('erroPrimeiroAcesso');
+    erroEl.style.display = 'none';
+
+    const usuarioExistente = usuarios.find(u => u.email && u.email.toLowerCase() === email);
+    if (!usuarioExistente) {
+      erroEl.textContent = 'Esse e-mail ainda não foi cadastrado por um administrador em Configurações → Usuários.';
+      erroEl.style.display = 'block';
+      return;
+    }
+
+    const { data, error } = await supabaseClient.auth.signUp({ email, password: senha });
+    if (error) {
+      erroEl.textContent = error.message.toLowerCase().includes('already registered')
+        ? 'Esse e-mail já tem senha criada — use "Entrar" ou "Esqueci minha senha".'
+        : error.message;
+      erroEl.style.display = 'block';
+      return;
+    }
+
+    if (data.session) {
+      await entrarComSessao(data.session);
+    } else {
+      alert('Conta criada! Se a confirmação de e-mail estiver habilitada no projeto, verifique sua caixa de entrada antes de entrar.');
+      mostrarTelaAuth('login');
+    }
+  });
+
+  document.getElementById('formEsqueciSenha').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = document.getElementById('esqueciEmail').value.trim();
+    const msgEl = document.getElementById('msgEsqueciSenha');
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.href.split('#')[0].split('?')[0]
+    });
+    msgEl.style.display = 'block';
+    msgEl.textContent = error
+      ? 'Não foi possível enviar o e-mail agora. Tente novamente em alguns minutos.'
+      : 'Se esse e-mail estiver cadastrado, um link de redefinição foi enviado. Confira sua caixa de entrada.';
+  });
+
+  document.getElementById('formNovaSenha').addEventListener('submit', async e => {
+    e.preventDefault();
+    const novaSenha = document.getElementById('novaSenhaInput').value;
+    const erroEl = document.getElementById('erroNovaSenha');
+    erroEl.style.display = 'none';
+
+    const { error } = await supabaseClient.auth.updateUser({ password: novaSenha });
+    if (error) {
+      erroEl.textContent = 'Não foi possível salvar a nova senha. Tente novamente.';
+      erroEl.style.display = 'block';
+      return;
+    }
+    alert('Senha redefinida com sucesso!');
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    await entrarComSessao(session);
+  });
+
+  async function sairDaConta() {
+    if (supabaseConfigurado) await supabaseClient.auth.signOut();
+    usuarioLogado = null;
+    location.reload();
+  }
+
+  function solicitarRedefinicaoSenhaPerfil() {
+    if (!usuarioLogado || !usuarioLogado.email) {
+      alert('Seu cadastro não tem e-mail — peça para um administrador adicionar um e-mail antes de redefinir a senha.');
+      return;
+    }
+    supabaseClient.auth.resetPasswordForEmail(usuarioLogado.email, {
+      redirectTo: window.location.href.split('#')[0].split('?')[0]
+    }).then(({ error }) => {
+      alert(error ? 'Não foi possível enviar o e-mail agora.' : `Link de redefinição enviado para ${usuarioLogado.email}. Confira sua caixa de entrada.`);
+    });
+  }
+
+  function preverFotoPerfil(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('perfilFotoPreview').src = e.target.result;
+      document.getElementById('perfilFotoPreview').style.display = 'block';
+      document.getElementById('perfilFotoPlaceholder').style.display = 'none';
+      perfilFotoBase64Temp = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  document.getElementById('formPerfilRestrito').addEventListener('submit', async e => {
+    e.preventDefault();
+    const novoNome = document.getElementById('perfilNome').value.trim();
+    const msgEl = document.getElementById('msgPerfilRestrito');
+    if (!usuarioLogado) return;
+
+    const campos = { nome: novoNome };
+    if (perfilFotoBase64Temp) campos.fotoUrl = perfilFotoBase64Temp;
+
+    usuarioLogado.nome = novoNome;
+    if (perfilFotoBase64Temp) usuarioLogado.fotoUrl = perfilFotoBase64Temp;
+
+    await supaAtualizar('usuarios', usuarioLogado.id, campos);
+    msgEl.textContent = 'Perfil salvo!';
+    msgEl.style.display = 'block';
+    setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
+  });
 
   // ============== ESTADO EM MEMÓRIA ==============
   let usuarios = [];      // { id, matricula, nome }
   let veiculos = [];      // { id, placa, modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao }
   let cargasProgramadas = []; // { id, numeroOC, janelaCarregamento, modalidade, transportadora, tipoVeiculo, placa, veiculoId, status }
   let itensCarga = [];         // { id, cargaId, item, quantidade, quantidadePallets, cliente, destino, nf, janelaEntrega, status }
+  let sequenciamentoRaw = [];  // { id, dados: {...linha original da tabela "procs"...}, sincronizadoEm }
+  let mapeamentoSequenciamento = {}; // { campoProduto, campoDescricao, campoDataInicio, campoDataFim, campoQuantidade, campoMaquina, campoSequencia, campoStatus }
   let viagens = [];       // { id, veiculoId, motorista, dataHora, previsaoChegada, origem, destino, status, observacoes }
   let enderecos = [];     // { id, codigo, rua, bloco, nivel, capacidadeKg, status, observacao, descricao }
   let materiais = [];     // { id, codigo, descricao, pesoUnitarioKg, familia, unidade, estoqueMinimo, estoqueMaximo, ativo, pecasPorPct, pesoPacoteKg, amarracao, qtdAltura, qtdPctPorPallet, fracaoPct, totalPct, qtdTotalPc }
@@ -1629,12 +2177,15 @@
     e.preventDefault();
     const nome = document.getElementById('usuNome').value.trim();
     const matricula = document.getElementById('usuMatricula').value.trim();
+    const email = document.getElementById('usuEmail').value.trim().toLowerCase();
     const cargo = document.getElementById('usuCargo').value;
     if (!nome || !matricula) return;
     const novoUsuario = {
       id: crypto.randomUUID(),
       nome,
       matricula,
+      email: email || null,
+      fotoUrl: null,
       cargo,
       permissoes: gerarPermissoesPadrao(cargo)
     };
@@ -1714,8 +2265,9 @@
         <td><span class="expand-arrow" id="seta_${u.id}">▸</span></td>
         <td><span class="badge">${u.matricula}</span></td>
         <td>${u.nome}</td>
+        <td>${u.email || '-'}</td>
         <td>${u.cargo || 'Usuário'}</td>
-        <td class="actions-col"><button class="btn danger" onclick="event.stopPropagation(); removerUsuario(${u.id})">✕</button></td>
+        <td class="actions-col"><button class="btn danger" onclick="event.stopPropagation(); removerUsuario('${u.id}')">✕</button></td>
       `;
       tbody.appendChild(tr);
 
@@ -1748,7 +2300,7 @@
       }).join('');
 
       trDetalhe.innerHTML = `
-        <td colspan="5">
+        <td colspan="6">
           <div onclick="event.stopPropagation();">
             <div class="truck-card-row" style="border-top:none; padding-top:0;">
               <label>Cargo</label>
@@ -4061,6 +4613,324 @@
     });
   }
 
+  // ============== SEQUENCIAMENTO DE PRODUÇÃO ==============
+
+  // Descobre quais colunas existem, olhando o registro sincronizado mais recente
+  function getCamposDisponiveisSequenciamento() {
+    if (sequenciamentoRaw.length === 0) return [];
+    // Usa o registro mais recente (pode ter colunas diferentes de um registro antigo, em tese)
+    const maisRecente = [...sequenciamentoRaw].sort((a, b) => new Date(b.sincronizadoEm) - new Date(a.sincronizadoEm))[0];
+    return Object.keys(maisRecente.dados || {});
+  }
+
+  function obterValorCampo(dadosLinha, nomeCampo) {
+    if (!nomeCampo || !dadosLinha) return undefined;
+    return dadosLinha[nomeCampo];
+  }
+
+  function formatarValorPossivelData(valor) {
+    if (valor === undefined || valor === null || valor === '') return '-';
+    const d = new Date(valor);
+    if (!isNaN(d.getTime()) && String(valor).length >= 8) {
+      return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+    return String(valor);
+  }
+
+  const SELECTS_MAPEAMENTO = [
+    ['mapCampoChave', 'campoChave'],
+    ['mapCampoProduto', 'campoProduto'],
+    ['mapCampoDescricao', 'campoDescricao'],
+    ['mapCampoDataInicio', 'campoDataInicio'],
+    ['mapCampoDataFim', 'campoDataFim'],
+    ['mapCampoQuantidade', 'campoQuantidade'],
+    ['mapCampoMaquina', 'campoMaquina'],
+    ['mapCampoCategoriaMaquina', 'campoCategoriaMaquina'],
+    ['mapCampoCliente', 'campoCliente'],
+    ['mapCampoSequencia', 'campoSequencia'],
+    ['mapCampoStatus', 'campoStatus']
+  ];
+
+  function renderConfiguracaoMapeamento() {
+    const aviso = document.getElementById('avisoSemDadosSequenciamento');
+    const campos = getCamposDisponiveisSequenciamento();
+    aviso.style.display = campos.length === 0 ? 'block' : 'none';
+
+    const opcoesHtml = '<option value="">Selecione...</option>' + campos.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    SELECTS_MAPEAMENTO.forEach(([idSelect, chaveMapeamento]) => {
+      const select = document.getElementById(idSelect);
+      const valorAtual = mapeamentoSequenciamento[chaveMapeamento] || '';
+      select.innerHTML = opcoesHtml;
+      if (campos.includes(valorAtual)) select.value = valorAtual;
+    });
+  }
+
+  const formMapeamentoSequenciamento = document.getElementById('formMapeamentoSequenciamento');
+  formMapeamentoSequenciamento.addEventListener('submit', async e => {
+    e.preventDefault();
+    const novoMapeamento = {};
+    SELECTS_MAPEAMENTO.forEach(([idSelect, chaveMapeamento]) => {
+      novoMapeamento[chaveMapeamento] = document.getElementById(idSelect).value || null;
+    });
+    mapeamentoSequenciamento = novoMapeamento;
+    await supaUpsertMapeamentoSequenciamento(novoMapeamento);
+    alert('Mapeamento salvo! Atualizando busca e Gantt...');
+    renderTudo();
+  });
+
+  // A tabela de mapeamento é uma única linha fixa (id = 1) — usa upsert em vez de insert simples
+  async function supaUpsertMapeamentoSequenciamento(mapeamento) {
+    if (!supabaseConfigurado) return;
+    const linha = paraBanco('sequenciamento_producao_mapeamento', { id: 1, ...mapeamento });
+    const { error } = await supabaseClient.from('sequenciamento_producao_mapeamento').upsert(linha);
+    if (error) console.error('Supabase: erro ao salvar mapeamento de sequenciamento:', error.message);
+  }
+
+  // Diferente de supaInserir: usa upsert, já que reimportar a planilha deve ATUALIZAR
+  // os registros existentes (mesma chave), não duplicar nem dar erro de conflito.
+  async function supaUpsertSequenciamentoRaw(registro) {
+    if (!supabaseConfigurado) return;
+    const linha = paraBanco('sequenciamento_producao_raw', registro);
+    const { error } = await supabaseClient.from('sequenciamento_producao_raw').upsert(linha);
+    if (error) console.error('Supabase: erro ao importar linha de sequenciamento:', error.message);
+  }
+
+  // ---- Importar planilha de Programação de Produção ----
+  async function importarPlanilhaSequenciamento(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    let linhas;
+    try {
+      linhas = await lerPlanilha(file);
+    } catch (err) {
+      alert('Não foi possível ler a planilha. Verifique se o arquivo é um .xlsx, .xls ou .csv válido.');
+      event.target.value = '';
+      return;
+    }
+
+    if (linhas.length === 0) {
+      alert('A planilha não tem nenhuma linha de dados.');
+      event.target.value = '';
+      return;
+    }
+
+    const campoChave = mapeamentoSequenciamento.campoChave;
+    const agora = new Date().toISOString();
+    let processadas = 0;
+
+    linhas.forEach((linha, indice) => {
+      // Usa a coluna-chave configurada, se já houver uma; senão, gera um identificador
+      // provisório (ok para a primeira importação — configure a Coluna Chave logo em
+      // seguida para que as próximas importações atualizem em vez de duplicar).
+      const chave = campoChave && linha[campoChave] !== undefined && linha[campoChave] !== ''
+        ? String(linha[campoChave])
+        : `linha-${indice}-${JSON.stringify(linha).length}`;
+
+      const registro = { id: chave, dados: linha, sincronizadoEm: agora };
+      const existente = sequenciamentoRaw.find(r => r.id === chave);
+      if (existente) {
+        existente.dados = linha;
+        existente.sincronizadoEm = agora;
+      } else {
+        sequenciamentoRaw.push(registro);
+      }
+      supaUpsertSequenciamentoRaw(registro);
+      processadas++;
+    });
+
+    event.target.value = '';
+    renderTudo();
+    alert(
+      `Importação concluída!\n\n` +
+      `Linhas processadas: ${processadas}\n\n` +
+      (campoChave
+        ? 'As próximas importações vão atualizar essas mesmas linhas (pela Coluna Chave configurada).'
+        : '⚠ Nenhuma Coluna Chave configurada ainda — configure em "Configuração de Campos" para que a próxima importação atualize estas linhas em vez de duplicá-las.')
+    );
+  }
+
+  const filtroSequenciamentoInput = document.getElementById('filtroSequenciamento');
+  filtroSequenciamentoInput.addEventListener('input', renderBuscaSequenciamento);
+
+  function renderBuscaSequenciamento() {
+    const tbody = document.querySelector('#tabelaBuscaSequenciamento tbody');
+    const msgVazio = document.getElementById('msgBuscaSequenciamentoVazio');
+    const termo = filtroSequenciamentoInput.value.trim().toLowerCase();
+    const m = mapeamentoSequenciamento;
+
+    let linhas = sequenciamentoRaw;
+    if (termo) {
+      linhas = linhas.filter(r => {
+        const produto = String(obterValorCampo(r.dados, m.campoProduto) || '').toLowerCase();
+        const descricao = String(obterValorCampo(r.dados, m.campoDescricao) || '').toLowerCase();
+        return produto.includes(termo) || descricao.includes(termo);
+      });
+    }
+
+    tbody.innerHTML = '';
+    if (linhas.length === 0) {
+      msgVazio.style.display = 'block';
+      document.getElementById('tabelaBuscaSequenciamento').style.display = 'none';
+      return;
+    }
+    msgVazio.style.display = 'none';
+    document.getElementById('tabelaBuscaSequenciamento').style.display = 'table';
+
+    linhas.slice(0, 300).forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge">${obterValorCampo(r.dados, m.campoProduto) ?? '-'}</span></td>
+        <td>${obterValorCampo(r.dados, m.campoDescricao) ?? '-'}</td>
+        <td>${formatarValorPossivelData(obterValorCampo(r.dados, m.campoDataInicio))}</td>
+        <td>${formatarValorPossivelData(obterValorCampo(r.dados, m.campoDataFim))}</td>
+        <td>${obterValorCampo(r.dados, m.campoQuantidade) ?? '-'}</td>
+        <td>${obterValorCampo(r.dados, m.campoMaquina) ?? '-'}</td>
+        <td>${obterValorCampo(r.dados, m.campoSequencia) ?? '-'}</td>
+        <td>${obterValorCampo(r.dados, m.campoStatus) ?? '-'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function toggleCategoriaGantt(idCategoria) {
+    const wrap = document.getElementById('gantt-cat-' + idCategoria);
+    const seta = document.getElementById('gantt-seta-' + idCategoria);
+    if (!wrap) return;
+    const abrindo = wrap.style.display === 'none';
+    wrap.style.display = abrindo ? 'block' : 'none';
+    if (seta) seta.classList.toggle('fechado', !abrindo);
+  }
+
+  function slugify(texto) {
+    return String(texto).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'geral';
+  }
+
+  function renderGanttSequenciamento() {
+    const container = document.getElementById('ganttSequenciamento');
+    const msgVazio = document.getElementById('msgGanttVazio');
+    const m = mapeamentoSequenciamento;
+
+    if (!m.campoDataInicio || !m.campoMaquina) {
+      container.innerHTML = '';
+      msgVazio.style.display = 'block';
+      msgVazio.textContent = 'Configure ao menos "Data/Hora Início" e "Máquina / Linha" na Configuração de Campos para exibir o Gantt.';
+      return;
+    }
+
+    const agora = new Date();
+
+    // "Ainda vai produzir": data fim (ou início, se não houver fim) ainda não passou
+    const pendentes = sequenciamentoRaw
+      .map(r => {
+        const inicio = new Date(obterValorCampo(r.dados, m.campoDataInicio));
+        const fimBruto = m.campoDataFim ? obterValorCampo(r.dados, m.campoDataFim) : null;
+        const fim = fimBruto ? new Date(fimBruto) : inicio;
+        const maquina = String(obterValorCampo(r.dados, m.campoMaquina) ?? '(sem máquina)');
+        const categoria = m.campoCategoriaMaquina ? String(obterValorCampo(r.dados, m.campoCategoriaMaquina) ?? 'Outros') : null;
+        return { r, inicio, fim, maquina, categoria };
+      })
+      .filter(x => !isNaN(x.inicio.getTime()) && x.fim >= agora)
+      .sort((a, b) => a.inicio - b.inicio);
+
+    if (pendentes.length === 0) {
+      container.innerHTML = '';
+      msgVazio.style.display = 'block';
+      msgVazio.textContent = 'Nada pendente de produção no período, ou o mapeamento de campos ainda não foi configurado.';
+      return;
+    }
+    msgVazio.style.display = 'none';
+
+    // Janela de datas visível: de hoje até o fim mais distante, limitado a ~30 dias pra não pesar
+    const inicioRange = new Date(agora); inicioRange.setHours(0, 0, 0, 0);
+    const fimRange = new Date(Math.max(...pendentes.map(x => x.fim)));
+    const LIMITE_DIAS = 30;
+    const diasTotais = Math.min(LIMITE_DIAS, Math.max(1, Math.ceil((fimRange - inicioRange) / 86400000) + 1));
+    const larguraDia = 46; // px, precisa bater com .gantt-day no CSS
+    const pxPorHora = larguraDia / 24;
+    const larguraTotalPx = diasTotais * larguraDia;
+
+    // Cabeçalho com a escala de dias
+    let headerHtml = '<div class="gantt-header-row"><div class="gantt-label-col">Máquinas</div><div class="gantt-horas-col">Total Horas</div>';
+    for (let i = 0; i < diasTotais; i++) {
+      const dia = new Date(inicioRange.getTime() + i * 86400000);
+      const ehHoje = i === 0;
+      headerHtml += `<div class="gantt-day ${ehHoje ? 'hoje' : ''}">${String(dia.getDate()).padStart(2, '0')}/${String(dia.getMonth() + 1).padStart(2, '0')}</div>`;
+    }
+    headerHtml += '</div>';
+
+    // Agrupa por máquina, e opcionalmente por categoria de máquina
+    const porMaquina = {};
+    pendentes.forEach(x => {
+      if (!porMaquina[x.maquina]) porMaquina[x.maquina] = { categoria: x.categoria, itens: [] };
+      porMaquina[x.maquina].itens.push(x);
+    });
+
+    function construirLinhaMaquina(nomeMaquina, itens) {
+      const totalHoras = itens.reduce((soma, x) => soma + Math.max(0, (x.fim - x.inicio) / 3600000), 0);
+
+      const barrasHtml = itens.map(x => {
+        const offsetPx = Math.max(0, (x.inicio - inicioRange) / 3600000 * pxPorHora);
+        const larguraPx = Math.max(18, (x.fim - x.inicio) / 3600000 * pxPorHora);
+        const larguraLimitada = Math.min(larguraPx, larguraTotalPx - offsetPx);
+
+        const status = m.campoStatus ? String(obterValorCampo(x.r.dados, m.campoStatus) ?? '').toLowerCase() : '';
+        let classeStatus = '';
+        if (status.includes('conclu') || status.includes('finaliz')) classeStatus = 'concluido';
+        else if (x.inicio <= agora && agora <= x.fim) classeStatus = 'emandamento';
+        else if (x.inicio < agora) classeStatus = 'atrasado';
+
+        const produto = obterValorCampo(x.r.dados, m.campoProduto) ?? '';
+        const descricao = obterValorCampo(x.r.dados, m.campoDescricao) ?? '';
+        const cliente = m.campoCliente ? obterValorCampo(x.r.dados, m.campoCliente) : '';
+        const linha1 = `${formatarValorPossivelData(obterValorCampo(x.r.dados, m.campoDataInicio))} à ${formatarValorPossivelData(obterValorCampo(x.r.dados, m.campoDataFim) ?? '')}`;
+        const linha2 = [produto, descricao, cliente].filter(Boolean).join(' - ');
+        const tituloCompleto = `${linha1}\n${linha2}`.replace(/"/g, '&quot;');
+
+        return `<div class="gantt-bar ${classeStatus}" style="left:${offsetPx}px; width:${larguraLimitada - 3}px;" title="${tituloCompleto}">
+          <span class="gantt-bar-linha1">${linha1}</span>
+          <span class="gantt-bar-linha2">${linha2 || '(sem descrição)'}</span>
+        </div>`;
+      }).join('');
+
+      let celulasFundo = '';
+      for (let i = 0; i < diasTotais; i++) celulasFundo += '<div class="gantt-day"></div>';
+
+      return `
+        <div class="gantt-row">
+          <div class="gantt-label-col" title="${nomeMaquina}">${nomeMaquina}</div>
+          <div class="gantt-horas-col">${totalHoras.toFixed(1)}h</div>
+          <div class="gantt-track">${celulasFundo}${barrasHtml}</div>
+        </div>`;
+    }
+
+    let corpoHtml = '';
+    if (m.campoCategoriaMaquina) {
+      // Agrupa máquinas por categoria, cada uma com header recolhível
+      const porCategoria = {};
+      Object.entries(porMaquina).forEach(([maquina, info]) => {
+        const cat = info.categoria || 'Outros';
+        if (!porCategoria[cat]) porCategoria[cat] = [];
+        porCategoria[cat].push([maquina, info.itens]);
+      });
+
+      corpoHtml = Object.entries(porCategoria).map(([categoria, maquinas]) => {
+        const idCat = slugify(categoria);
+        const linhasMaquinas = maquinas.map(([maquina, itens]) => construirLinhaMaquina(maquina, itens)).join('');
+        return `
+          <div class="gantt-categoria-row" onclick="toggleCategoriaGantt('${idCat}')">
+            <div class="gantt-label-col"><span class="gantt-categoria-arrow" id="gantt-seta-${idCat}">▾</span> ${categoria}</div>
+          </div>
+          <div id="gantt-cat-${idCat}">${linhasMaquinas}</div>`;
+      }).join('');
+    } else {
+      corpoHtml = Object.entries(porMaquina).map(([maquina, info]) => construirLinhaMaquina(maquina, info.itens)).join('');
+    }
+
+    container.innerHTML = `<div class="gantt-grid">${headerHtml}${corpoHtml}</div>`;
+  }
+
   // ============== RENDER GERAL ==============
   function renderTudo() {
     renderUsuarios();
@@ -4081,10 +4951,13 @@
     renderApontamentoPendente();
     renderApontamentoRealizado();
     renderAlocacaoPiso();
+    renderConfiguracaoMapeamento();
+    renderBuscaSequenciamento();
+    renderGanttSequenciamento();
     atualizarBadgesSolicitacao();
   }
 
-  carregarTudoDoSupabase().finally(renderTudo);
+  carregarTudoDoSupabase().then(inicializarAutenticacao).finally(renderTudo);
 </script>
 
 </body>
