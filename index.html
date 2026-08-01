@@ -714,6 +714,7 @@
     <nav id="comercialNav">
       <button data-page="pageSolicitacaoVerificacao"><span class="ico">📝</span><span class="txt"> Solicitação de verificação de Estoque</span><span class="nav-badge" id="badgeSolicitacaoVerificacao">0</span></button>
       <button data-page="pageSolicitacaoMaterial"><span class="ico">📦</span><span class="txt"> Solicitação de Separação de Material</span></button>
+      <button data-page="pageSolicitacaoProgramacaoVeiculo"><span class="ico">🚚</span><span class="txt"> Solicitação de Programação de Veículo</span></button>
     </nav>
   </div>
 
@@ -726,6 +727,17 @@
       <button data-page="pageProgramacaoCargas"><span class="ico">📋</span><span class="txt"> Programação</span></button>
       <button data-page="pageCadastroVeiculos"><span class="ico">🚛</span><span class="txt"> Cadastro de Veículos</span></button>
       <button data-page="pageViagensProgramadas"><span class="ico">🗺️</span><span class="txt"> Viagens Programadas / Status de Veículo</span></button>
+    </nav>
+  </div>
+
+  <div class="nav-group collapsed" id="grupoCadastros">
+    <button class="nav-category" id="toggleCadastros">
+      <span class="cat-left"><span class="ico">🗂️</span><span class="txt">Cadastros</span></span>
+      <span class="cat-arrow">▾</span>
+    </button>
+    <nav id="cadastrosNav">
+      <button data-page="pageClientes"><span class="ico">👥</span><span class="txt"> Clientes</span></button>
+      <button data-page="pagePaletizacao"><span class="ico">📦</span><span class="txt"> Padrão de Paletização</span></button>
     </nav>
   </div>
 
@@ -748,6 +760,7 @@
 
 <main>
 <datalist id="datalistMateriais"></datalist>
+<datalist id="datalistClientes"></datalist>
 
 <div id="cabecalhoUsuarioLogado" style="display:none;">
   <span id="cabecalhoAvatarUsuario" class="cabecalho-avatar">👤</span>
@@ -850,10 +863,33 @@
   <!-- ===================== PROGRAMAÇÃO DE CARGAS (EXPEDIÇÃO) ===================== -->
   <div class="page" id="pageProgramacaoCargas">
     <div class="page-title">📋 Expedição / Programação</div>
-    <div class="page-subtitle">Programação de carregamentos — normalmente feita com pelo menos 1 dia de antecedência da viagem factual</div>
+    <div class="page-subtitle">Organize as solicitações do Comercial por destino e consolide em cargas — ou programe uma carga do zero</div>
 
     <div class="card">
-      <h2>Nova Carga Programada</h2>
+      <h2>Solicitações Pendentes do Comercial</h2>
+      <p class="toolbar-hint">Clique nos cabeçalhos (ex: <strong>Destino</strong> ou <strong>OC</strong>) para agrupar visualmente. Marque as que devem viajar juntas e consolide numa única carga.</p>
+      <div class="table-wrap">
+      <table id="tabelaSolPendentesExpedicao">
+        <thead>
+          <tr>
+            <th style="width:30px;">Sel.</th>
+            <th>OC</th><th>Item</th><th>Quantidade</th><th>Pallets</th>
+            <th>Cliente</th><th>Destino</th><th>Endereço</th>
+            <th>Transportadora</th><th>Tipo</th><th>Placa</th>
+            <th>Janela Carreg.</th><th>NF</th><th>Janela Entrega</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgSolPendentesExpedicaoVazio" class="empty-msg" style="display:none;">Nenhuma solicitação pendente do Comercial no momento.</div>
+      <div class="toolbar" style="margin-top:10px;">
+        <button type="button" class="btn" style="background:#2563eb;" onclick="consolidarSolicitacoesEmCarga()">🔗 Consolidar Selecionadas em Carga</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Programar Carga do Zero</h2>
       <form class="grid" id="formCarga">
         <div>
           <label>N° OC (Ordem de Coleta)</label>
@@ -1099,6 +1135,92 @@
         <button type="submit" class="btn" style="width:100%; background:#475569;">Alterar minha senha</button>
         <p id="msgTrocarSenhaPerfil" class="auth-hint" style="display:none;"></p>
       </form>
+    </div>
+  </div>
+
+  <!-- ===================== CLIENTES (CADASTROS) ===================== -->
+  <div class="page" id="pageClientes">
+    <div class="page-title">👥 Cadastros / Clientes</div>
+    <div class="page-subtitle">Cadastro de clientes/CDs — código, endereço, CNPJ e empresa</div>
+    <div class="card">
+      <h2>Importar Planilha de Clientes</h2>
+      <div class="toolbar">
+        <label class="btn-file">
+          📤 Importar Planilha de Clientes
+          <input type="file" id="inputImportarClientes" accept=".xlsx,.xls,.csv" onchange="importarPlanilhaClientes(event)">
+        </label>
+      </div>
+      <p class="toolbar-hint">A planilha deve conter as colunas: <strong>CD, ENDEREÇO, CNPJ, EMPRESA</strong>. Clientes já existentes (mesmo CD) são atualizados.</p>
+    </div>
+    <div class="card">
+      <h2>Cadastro de Cliente</h2>
+      <form class="grid" id="formCliente">
+        <div>
+          <label>CD (Código)</label>
+          <input type="text" id="clienteCd" placeholder="Ex: BSB1" required>
+        </div>
+        <div>
+          <label>Endereço</label>
+          <input type="text" id="clienteEndereco" placeholder="Ex: Rod. DF 290 KM 1.2...">
+        </div>
+        <div>
+          <label>CNPJ</label>
+          <input type="text" id="clienteCnpj" placeholder="Ex: 15.436.940/0010-96">
+        </div>
+        <div>
+          <label>Empresa</label>
+          <input type="text" id="clienteEmpresa" placeholder="Ex: Amazon Serviços de Varejo">
+        </div>
+        <div>
+          <button type="submit" class="btn">Cadastrar Cliente</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Clientes Cadastrados</h2>
+      <div class="table-wrap">
+      <table id="tabelaClientes">
+        <thead><tr>
+          <th>CD</th><th>Endereço</th><th>CNPJ</th><th>Empresa</th>
+          <th class="actions-col">Ação</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgClientesVazio" class="empty-msg" style="display:none;">Nenhum cliente cadastrado ainda.</div>
+    </div>
+  </div>
+
+  <!-- ===================== PADRÃO DE PALETIZAÇÃO (CADASTROS) ===================== -->
+  <div class="page" id="pagePaletizacao">
+    <div class="page-title">📦 Cadastros / Padrão de Paletização</div>
+    <div class="page-subtitle">Quantidade de material por pacote/pallet — usado para calcular pallets automaticamente nas cargas programadas</div>
+    <div class="card">
+      <h2>Importar Padrão de Paletização</h2>
+      <div class="toolbar">
+        <label class="btn-file">
+          📤 Importar Padrão de Paletização
+          <input type="file" id="inputImportarPaletizacaoCadastros" accept=".xlsx,.xls,.csv" onchange="importarPlanilhaPaletizacao(event)">
+        </label>
+      </div>
+      <p class="toolbar-hint">
+        A planilha deve conter as colunas: <strong>COD. PRODUTO, QTD. POR PCT, AMARRAÇÃO, QTD. ALTURA, QTD. PCT POR PALLET, QTD. TOTAL</strong>.
+        Isso complementa o Cadastro de SKU (Estoque → Materiais) — pode subir em qualquer ordem, os dados existentes não são apagados.
+        É esse padrão que permite calcular automaticamente quantos pallets uma quantidade de material vai ocupar.
+      </p>
+    </div>
+    <div class="card">
+      <h2>Padrão Cadastrado por Material</h2>
+      <div class="table-wrap">
+      <table id="tabelaPaletizacao">
+        <thead><tr>
+          <th>Código</th><th>Descrição</th><th>Peças/PCT</th>
+          <th>Amarração</th><th>Qtd. Altura</th><th>Qtd. PCT/Pallet</th><th>Qtd. Total PC</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgPaletizacaoVazio" class="empty-msg" style="display:none;">Nenhum material com padrão de paletização cadastrado ainda.</div>
     </div>
   </div>
 
@@ -1698,6 +1820,103 @@
     </div>
   </div>
 
+  <!-- ===================== SOLICITAÇÃO DE PROGRAMAÇÃO DE VEÍCULO (COMERCIAL) ===================== -->
+  <div class="page" id="pageSolicitacaoProgramacaoVeiculo">
+    <div class="page-title">🚚 Comercial / Solicitação de Programação de Veículo</div>
+    <div class="page-subtitle">Peça a expedição de um item — a Expedição depois organiza e agrupa por destino</div>
+
+    <div class="card">
+      <h2>Nova Solicitação</h2>
+      <form class="grid" id="formSolProgVeiculo">
+        <div>
+          <label>N° OC (Ordem de Coleta)</label>
+          <input type="text" id="spvOrdemColeta" placeholder="Ex: OC-4012">
+        </div>
+        <div>
+          <label>Janela de Carregamento</label>
+          <input type="datetime-local" id="spvJanelaCarregamento">
+        </div>
+        <div>
+          <label>Transportadora</label>
+          <input type="text" id="spvTransportadora" placeholder="Ex: WP, PRÓPRIA">
+        </div>
+        <div>
+          <label>Tipo</label>
+          <select id="spvTipo">
+            <option value="Dedicado">Dedicado</option>
+            <option value="Fracionado">Fracionado</option>
+          </select>
+        </div>
+        <div>
+          <label>Placa</label>
+          <input type="text" id="spvPlaca" placeholder="Opcional, se ainda não definida">
+        </div>
+        <div>
+          <label>Item</label>
+          <input type="text" id="spvItem" list="datalistMateriais" placeholder="Ex: FULL_B1" required>
+        </div>
+        <div>
+          <label>Quantidade</label>
+          <input type="number" id="spvQuantidade" min="0.01" step="any" placeholder="Ex: 50000" required>
+        </div>
+        <div>
+          <label>Pallets (estimado)</label>
+          <input type="text" id="spvPallets" placeholder="Calculado automaticamente" readonly>
+        </div>
+        <div>
+          <label>Cliente</label>
+          <input type="text" id="spvCliente" placeholder="Ex: MERCADO LIVRE">
+        </div>
+        <div>
+          <label>Destino (CD)</label>
+          <input type="text" id="spvDestino" list="datalistClientes" placeholder="Ex: SP19">
+        </div>
+        <div>
+          <label>Endereço</label>
+          <input type="text" id="spvEndereco" placeholder="Preenchido automaticamente" readonly>
+        </div>
+        <div>
+          <label>NF</label>
+          <input type="text" id="spvNf" placeholder="Opcional">
+        </div>
+        <div>
+          <label>Janela de Entrega</label>
+          <input type="datetime-local" id="spvJanelaEntrega">
+        </div>
+        <div id="campoSolicitanteSpvWrap">
+          <label>Solicitante</label>
+          <input type="text" id="spvSolicitante" placeholder="Nome de quem está solicitando">
+        </div>
+        <div id="campoSolicitanteSpvLogado" style="display:none;">
+          <label>Solicitante</label>
+          <input type="text" id="spvSolicitanteLogadoTexto" readonly style="background:#f3f4f6;">
+        </div>
+        <div>
+          <button type="submit" class="btn">Registrar Solicitação</button>
+        </div>
+      </form>
+      <p class="toolbar-hint">O campo "Pallets" é calculado automaticamente com base na quantidade e no <em>Padrão de Paletização</em> cadastrado (Cadastros → Padrão de Paletização). Cadastre o item lá para essa previsão funcionar.</p>
+    </div>
+
+    <div class="card">
+      <h2>Solicitações Pendentes (aguardando Expedição organizar)</h2>
+      <div class="table-wrap">
+      <table id="tabelaSolProgVeiculo">
+        <thead>
+          <tr>
+            <th>OC</th><th>Janela Carreg.</th><th>Transp.</th><th>Tipo</th><th>Placa</th>
+            <th>Item</th><th>Quantidade</th><th>Pallets</th><th>Cliente</th><th>Destino</th>
+            <th>Endereço</th><th>NF</th><th>Janela Entrega</th><th>Status</th>
+            <th class="actions-col">Ação</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgSolProgVeiculoVazio" class="empty-msg" style="display:none;">Nenhuma solicitação registrada ainda.</div>
+    </div>
+  </div>
+
 </main>
 
 </div>
@@ -1814,6 +2033,13 @@
       campoDataFim: 'campo_data_fim', campoQuantidade: 'campo_quantidade', campoMaquina: 'campo_maquina',
       campoCategoriaMaquina: 'campo_categoria_maquina', campoCliente: 'campo_cliente',
       campoSequencia: 'campo_sequencia', campoStatus: 'campo_status'
+    },
+    clientes: { cd: 'cd', endereco: 'endereco', cnpj: 'cnpj', empresa: 'empresa' },
+    solicitacoes_programacao_veiculo: {
+      ordemColeta: 'ordem_coleta', janelaCarregamento: 'janela_carregamento', transportadora: 'transportadora',
+      tipo: 'tipo', placa: 'placa', item: 'item', quantidade: 'quantidade', pallets: 'pallets',
+      cliente: 'cliente', destino: 'destino', endereco: 'endereco', nf: 'nf', janelaEntrega: 'janela_entrega',
+      status: 'status', cargaId: 'carga_id', solicitante: 'solicitante'
     }
   };
 
@@ -1871,12 +2097,13 @@
   async function carregarTudoDoSupabase() {
     if (!supabaseConfigurado) return;
     try {
-      const [u, en, mat, mov, solVer, fila, prod, apont, solMat, veic, cargas, itens, viag, seqRaw, seqMap] = await Promise.all([
+      const [u, en, mat, mov, solVer, fila, prod, apont, solMat, veic, cargas, itens, viag, seqRaw, seqMap, cli, solProgVeic] = await Promise.all([
         supaListar('usuarios'), supaListar('enderecos'), supaListar('materiais'), supaListar('movimentacoes'),
         supaListar('solicitacoes_verificacao'), supaListar('fila_solicitacoes'), supaListar('producoes'),
         supaListar('apontamentos_producao'), supaListar('solicitacoes_material'), supaListar('veiculos'),
         supaListar('cargas_programadas'), supaListar('itens_carga'), supaListar('viagens'),
-        supaListar('sequenciamento_producao_raw'), supaListar('sequenciamento_producao_mapeamento')
+        supaListar('sequenciamento_producao_raw'), supaListar('sequenciamento_producao_mapeamento'),
+        supaListar('clientes'), supaListar('solicitacoes_programacao_veiculo')
       ]);
       usuarios = u; enderecos = en; materiais = mat; movimentacoes = mov;
       solicitacoes = solVer; filaSolicitacoes = fila; producoes = prod;
@@ -1884,6 +2111,8 @@
       cargasProgramadas = cargas; itensCarga = itens; viagens = viag;
       sequenciamentoRaw = seqRaw;
       mapeamentoSequenciamento = seqMap[0] || {};
+      clientes = cli;
+      solicitacoesProgramacaoVeiculo = solProgVeic;
     } catch (err) {
       console.error('Supabase: falha ao carregar dados iniciais:', err.message);
     }
@@ -2020,6 +2249,23 @@
   // Quando há alguém logado, esconde o select "Usuário" da Movimentação e usa
   // automaticamente quem está logado — não faz mais sentido escolher manualmente
   // quem fez a movimentação já que o sistema sabe isso pela sessão.
+  // Helper genérico: esconde o campo manual e mostra o texto com o nome de quem
+  // está logado (ou o contrário, se ninguém estiver logado).
+  function aplicarCampoSolicitanteGenerico(idWrapManual, idWrapLogado, idTextoLogado) {
+    const wrapManual = document.getElementById(idWrapManual);
+    const wrapLogado = document.getElementById(idWrapLogado);
+    if (!wrapManual || !wrapLogado) return;
+    if (usuarioLogado) {
+      wrapManual.style.display = 'none';
+      wrapLogado.style.display = 'block';
+      const textoEl = document.getElementById(idTextoLogado);
+      if (textoEl) textoEl.value = usuarioLogado.nome;
+    } else {
+      wrapManual.style.display = '';
+      wrapLogado.style.display = 'none';
+    }
+  }
+
   function aplicarUsuarioLogadoNosFormularios() {
     const wrapSelect = document.getElementById('campoUsuarioMovimentacaoWrap');
     const wrapTexto = document.getElementById('campoUsuarioLogadoMovimentacao');
@@ -2038,19 +2284,11 @@
       }
     }
 
-    // Mesmo tratamento no campo Solicitante da Solicitação de Separação de Material
-    const wrapSolMatManual = document.getElementById('campoSolicitanteMatWrap');
-    const wrapSolMatLogado = document.getElementById('campoSolicitanteMatLogado');
-    if (wrapSolMatManual && wrapSolMatLogado) {
-      if (usuarioLogado) {
-        wrapSolMatManual.style.display = 'none';
-        wrapSolMatLogado.style.display = 'block';
-        document.getElementById('solMatSolicitanteLogadoTexto').value = usuarioLogado.nome;
-      } else {
-        wrapSolMatManual.style.display = '';
-        wrapSolMatLogado.style.display = 'none';
-      }
-    }
+    // Campo Solicitante da Solicitação de Separação de Material
+    aplicarCampoSolicitanteGenerico('campoSolicitanteMatWrap', 'campoSolicitanteMatLogado', 'solMatSolicitanteLogadoTexto');
+
+    // Campo Solicitante da Solicitação de Programação de Veículo
+    aplicarCampoSolicitanteGenerico('campoSolicitanteSpvWrap', 'campoSolicitanteSpvLogado', 'spvSolicitanteLogadoTexto');
   }
 
   function entrarComUsuario(usuario) {
@@ -2184,6 +2422,8 @@
   let itensCarga = [];         // { id, cargaId, item, quantidade, quantidadePallets, cliente, destino, nf, janelaEntrega, status }
   let sequenciamentoRaw = [];  // { id, dados: {...linha original da tabela "procs"...}, sincronizadoEm }
   let mapeamentoSequenciamento = {}; // { campoProduto, campoDescricao, campoDataInicio, campoDataFim, campoQuantidade, campoMaquina, campoSequencia, campoStatus }
+  let clientes = []; // { id, cd, endereco, cnpj, empresa }
+  let solicitacoesProgramacaoVeiculo = []; // { id, ordemColeta, janelaCarregamento, transportadora, tipo, placa, item, quantidade, pallets, cliente, destino, endereco, nf, janelaEntrega, status, cargaId, solicitante }
   let viagens = [];       // { id, veiculoId, motorista, dataHora, previsaoChegada, origem, destino, status, observacoes }
   let enderecos = [];     // { id, codigo, rua, bloco, nivel, capacidadeKg, status, observacao, descricao }
   let materiais = [];     // { id, codigo, descricao, pesoUnitarioKg, familia, unidade, estoqueMinimo, estoqueMaximo, ativo, pecasPorPct, pesoPacoteKg, amarracao, qtdAltura, qtdPctPorPallet, fracaoPct, totalPct, qtdTotalPc }
@@ -2197,7 +2437,7 @@
   let ultimoDiaVerificado = new Date().toDateString();
 
   // ============== NAVEGAÇÃO ==============
-  const navButtons = document.querySelectorAll('#mainNav button, #comercialNav button, #configNav button, #expedicaoNav button');
+  const navButtons = document.querySelectorAll('#mainNav button, #comercialNav button, #configNav button, #expedicaoNav button, #cadastrosNav button');
   navButtons.forEach(btn => {
     btn.addEventListener('click', () => {
       navButtons.forEach(b => b.classList.remove('active'));
@@ -2239,6 +2479,7 @@
       document.getElementById('grupoEstoque').classList.remove('collapsed');
       document.getElementById('grupoComercial').classList.remove('collapsed');
       document.getElementById('grupoExpedicao').classList.remove('collapsed');
+      document.getElementById('grupoCadastros').classList.remove('collapsed');
       document.getElementById('grupoConfig').classList.remove('collapsed');
     }
   });
@@ -2267,6 +2508,14 @@
     grupoExpedicao.classList.toggle('collapsed');
   });
 
+  // ============== CATEGORIA "CADASTROS" EXPANSÍVEL (accordion) ==============
+  const toggleCadastros = document.getElementById('toggleCadastros');
+  const grupoCadastros = document.getElementById('grupoCadastros');
+  toggleCadastros.addEventListener('click', () => {
+    if (sidebar.classList.contains('mini')) return;
+    grupoCadastros.classList.toggle('collapsed');
+  });
+
   // ============== CATEGORIA "CONFIGURAÇÕES" EXPANSÍVEL (accordion) ==============
   const toggleConfig = document.getElementById('toggleConfig');
   const grupoConfig = document.getElementById('grupoConfig');
@@ -2274,6 +2523,249 @@
     if (sidebar.classList.contains('mini')) return;
     grupoConfig.classList.toggle('collapsed');
   });
+
+  // ============== CADASTROS > CLIENTES ==============
+  const formCliente = document.getElementById('formCliente');
+  formCliente.addEventListener('submit', e => {
+    e.preventDefault();
+    const cd = document.getElementById('clienteCd').value.trim().toUpperCase();
+    const endereco = document.getElementById('clienteEndereco').value.trim();
+    const cnpj = document.getElementById('clienteCnpj').value.trim();
+    const empresa = document.getElementById('clienteEmpresa').value.trim();
+    if (!cd) return;
+
+    const existente = clientes.find(c => c.cd === cd);
+    if (existente) {
+      Object.assign(existente, { endereco, cnpj, empresa });
+      supaAtualizar('clientes', existente.id, { endereco, cnpj, empresa });
+    } else {
+      const novoCliente = { id: crypto.randomUUID(), cd, endereco, cnpj, empresa };
+      clientes.push(novoCliente);
+      supaInserir('clientes', novoCliente);
+    }
+    formCliente.reset();
+    renderTudo();
+  });
+
+  function removerCliente(id) {
+    clientes = clientes.filter(c => String(c.id) !== String(id));
+    supaRemover('clientes', id);
+    renderTudo();
+  }
+
+  function renderClientes() {
+    const tbody = document.querySelector('#tabelaClientes tbody');
+    const msg = document.getElementById('msgClientesVazio');
+    if (!tbody || !msg) return;
+    tbody.innerHTML = '';
+    if (clientes.length === 0) {
+      msg.style.display = 'block';
+      document.getElementById('tabelaClientes').style.display = 'none';
+      return;
+    }
+    msg.style.display = 'none';
+    document.getElementById('tabelaClientes').style.display = 'table';
+    clientes.forEach(c => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge">${c.cd}</span></td>
+        <td>${c.endereco || '-'}</td>
+        <td>${c.cnpj || '-'}</td>
+        <td>${c.empresa || '-'}</td>
+        <td class="actions-col"><button class="btn danger" onclick="removerCliente('${c.id}')">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function importarPlanilhaClientes(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    let linhas;
+    try {
+      linhas = await lerPlanilha(file);
+    } catch (err) {
+      alert('Não foi possível ler a planilha. Verifique se o arquivo é um .xlsx, .xls ou .csv válido.');
+      event.target.value = '';
+      return;
+    }
+
+    let criados = 0, atualizados = 0, ignorados = 0;
+
+    linhas.forEach(linha => {
+      const cd = String(valorColuna(linha, 'CD', 'CÓDIGO', 'CODIGO')).trim().toUpperCase();
+      if (!cd) { ignorados++; return; }
+
+      const endereco = String(valorColuna(linha, 'ENDEREÇO', 'ENDERECO')).trim();
+      const cnpj = String(valorColuna(linha, 'CNPJ')).trim();
+      const empresa = String(valorColuna(linha, 'EMPRESA')).trim();
+
+      const existente = clientes.find(c => c.cd === cd);
+      if (existente) {
+        Object.assign(existente, { endereco, cnpj, empresa });
+        supaAtualizar('clientes', existente.id, { endereco, cnpj, empresa });
+        atualizados++;
+      } else {
+        const novoCliente = { id: crypto.randomUUID(), cd, endereco, cnpj, empresa };
+        clientes.push(novoCliente);
+        supaInserir('clientes', novoCliente);
+        criados++;
+      }
+    });
+
+    event.target.value = '';
+    renderTudo();
+    alert(
+      `Importação concluída!\n\n` +
+      `Clientes novos criados: ${criados}\n` +
+      `Clientes atualizados: ${atualizados}\n` +
+      `Linhas ignoradas (sem CD): ${ignorados}`
+    );
+  }
+
+  // ============== CADASTROS > PADRÃO DE PALETIZAÇÃO ==============
+  // Mesma fonte de dados do Cadastro de SKU (Estoque > Materiais) — só uma visão
+  // focada nas colunas de paletização, pra facilitar de achar/importar aqui.
+  function renderPaletizacaoCadastros() {
+    const tbody = document.querySelector('#tabelaPaletizacao tbody');
+    const msg = document.getElementById('msgPaletizacaoVazio');
+    if (!tbody || !msg) return;
+
+    const comPaletizacao = materiais.filter(m => m.pecasPorPct || m.qtdPctPorPallet || m.qtdTotalPc);
+
+    tbody.innerHTML = '';
+    if (comPaletizacao.length === 0) {
+      msg.style.display = 'block';
+      document.getElementById('tabelaPaletizacao').style.display = 'none';
+      return;
+    }
+    msg.style.display = 'none';
+    document.getElementById('tabelaPaletizacao').style.display = 'table';
+
+    comPaletizacao.forEach(m => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge">${m.codigo}</span></td>
+        <td>${m.descricao || '-'}</td>
+        <td>${m.pecasPorPct ? formatarQtd(m.pecasPorPct) : '-'}</td>
+        <td>${m.amarracao || '-'}</td>
+        <td>${m.qtdAltura || '-'}</td>
+        <td>${m.qtdPctPorPallet || '-'}</td>
+        <td>${m.qtdTotalPc ? formatarQtd(m.qtdTotalPc) : '-'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Quantos pallets uma certa quantidade de um material vai ocupar, com base no
+  // padrão de paletização cadastrado (qtdTotalPc = peças por pallet).
+  function calcularPalletsEstimados(codigoMaterial, quantidade) {
+    if (!codigoMaterial || !quantidade || quantidade <= 0) return null;
+    const mat = materiais.find(m => m.codigo === String(codigoMaterial).trim().toUpperCase());
+    if (!mat || !mat.qtdTotalPc || mat.qtdTotalPc <= 0) return null;
+    return Math.ceil(quantidade / mat.qtdTotalPc);
+  }
+
+  // ============== COMERCIAL > SOLICITAÇÃO DE PROGRAMAÇÃO DE VEÍCULO ==============
+  function atualizarPalletsSpv() {
+    const item = document.getElementById('spvItem').value;
+    const quantidade = parseFloat(document.getElementById('spvQuantidade').value);
+    const pallets = calcularPalletsEstimados(item, quantidade);
+    document.getElementById('spvPallets').value = pallets !== null ? `${pallets} pallet(s)` : '';
+  }
+  document.getElementById('spvItem').addEventListener('input', atualizarPalletsSpv);
+  document.getElementById('spvQuantidade').addEventListener('input', atualizarPalletsSpv);
+
+  function atualizarEnderecoSpv() {
+    const destino = document.getElementById('spvDestino').value.trim().toUpperCase();
+    const cliente = clientes.find(c => c.cd === destino);
+    document.getElementById('spvEndereco').value = cliente ? (cliente.endereco || '') : '';
+  }
+  document.getElementById('spvDestino').addEventListener('input', atualizarEnderecoSpv);
+
+  document.getElementById('formSolProgVeiculo').addEventListener('submit', e => {
+    e.preventDefault();
+    const item = document.getElementById('spvItem').value.trim().toUpperCase();
+    const quantidade = parseFloat(document.getElementById('spvQuantidade').value);
+    const destino = document.getElementById('spvDestino').value.trim().toUpperCase();
+    if (!item || isNaN(quantidade) || quantidade <= 0 || !destino) return;
+
+    const solicitante = usuarioLogado ? usuarioLogado.nome : document.getElementById('spvSolicitante').value.trim();
+    const jc = document.getElementById('spvJanelaCarregamento').value;
+    const je = document.getElementById('spvJanelaEntrega').value;
+
+    const nova = {
+      id: crypto.randomUUID(),
+      ordemColeta: document.getElementById('spvOrdemColeta').value.trim(),
+      janelaCarregamento: jc || null,
+      transportadora: document.getElementById('spvTransportadora').value.trim(),
+      tipo: document.getElementById('spvTipo').value,
+      placa: document.getElementById('spvPlaca').value.trim().toUpperCase(),
+      item,
+      quantidade,
+      pallets: calcularPalletsEstimados(item, quantidade),
+      cliente: document.getElementById('spvCliente').value.trim(),
+      destino,
+      endereco: document.getElementById('spvEndereco').value.trim(),
+      nf: document.getElementById('spvNf').value.trim(),
+      janelaEntrega: je || null,
+      status: 'Pendente',
+      cargaId: null,
+      solicitante
+    };
+    solicitacoesProgramacaoVeiculo.push(nova);
+    supaInserir('solicitacoes_programacao_veiculo', nova);
+
+    document.getElementById('formSolProgVeiculo').reset();
+    document.getElementById('spvTipo').value = 'Dedicado';
+    renderTudo();
+  });
+
+  function removerSolProgVeiculo(id) {
+    solicitacoesProgramacaoVeiculo = solicitacoesProgramacaoVeiculo.filter(s => String(s.id) !== String(id));
+    supaRemover('solicitacoes_programacao_veiculo', id);
+    renderTudo();
+  }
+
+  function renderSolicitacoesProgramacaoVeiculo() {
+    const tbody = document.querySelector('#tabelaSolProgVeiculo tbody');
+    const msg = document.getElementById('msgSolProgVeiculoVazio');
+    if (!tbody || !msg) return;
+
+    const pendentes = solicitacoesProgramacaoVeiculo.filter(s => s.status === 'Pendente');
+
+    tbody.innerHTML = '';
+    if (pendentes.length === 0) {
+      msg.style.display = 'block';
+      document.getElementById('tabelaSolProgVeiculo').style.display = 'none';
+      return;
+    }
+    msg.style.display = 'none';
+    document.getElementById('tabelaSolProgVeiculo').style.display = 'table';
+
+    pendentes.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${s.ordemColeta || '-'}</td>
+        <td>${s.janelaCarregamento ? formatarDataHoraBR(s.janelaCarregamento) : '-'}</td>
+        <td>${s.transportadora || '-'}</td>
+        <td>${s.tipo || '-'}</td>
+        <td>${s.placa || '-'}</td>
+        <td><span class="badge">${s.item}</span></td>
+        <td>${formatarQtd(s.quantidade)}</td>
+        <td>${s.pallets ?? '-'}</td>
+        <td>${s.cliente || '-'}</td>
+        <td>${s.destino}</td>
+        <td>${s.endereco || '-'}</td>
+        <td>${s.nf || '-'}</td>
+        <td>${s.janelaEntrega ? formatarDataHoraBR(s.janelaEntrega) : '-'}</td>
+        <td>${s.status}</td>
+        <td class="actions-col"><button class="btn danger" onclick="removerSolProgVeiculo('${s.id}')">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
 
   // ============== USUÁRIOS ==============
 
@@ -2730,6 +3222,107 @@
     supaAtualizar('cargas_programadas', carga.id, { status: 'Convertida em Viagem' });
     renderTudo();
     alert('Carga convertida em viagem! Confira em Expedição → Viagens Programadas / Status de Veículo.');
+  }
+
+  // ---- Expedição > Programação: solicitações do Comercial ainda não consolidadas em carga ----
+  function renderSolicitacoesPendentesExpedicao() {
+    const tbody = document.querySelector('#tabelaSolPendentesExpedicao tbody');
+    const msg = document.getElementById('msgSolPendentesExpedicaoVazio');
+    if (!tbody || !msg) return;
+
+    const pendentes = solicitacoesProgramacaoVeiculo.filter(s => s.status === 'Pendente');
+
+    tbody.innerHTML = '';
+    if (pendentes.length === 0) {
+      msg.style.display = 'block';
+      document.getElementById('tabelaSolPendentesExpedicao').style.display = 'none';
+      return;
+    }
+    msg.style.display = 'none';
+    document.getElementById('tabelaSolPendentesExpedicao').style.display = 'table';
+
+    pendentes.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="text-align:center;"><input type="checkbox" class="chkSolPendenteExpedicao" data-id="${s.id}"></td>
+        <td>${s.ordemColeta || '-'}</td>
+        <td><span class="badge">${s.item}</span></td>
+        <td>${formatarQtd(s.quantidade)}</td>
+        <td>${s.pallets ?? '-'}</td>
+        <td>${s.cliente || '-'}</td>
+        <td>${s.destino}</td>
+        <td>${s.endereco || '-'}</td>
+        <td>${s.transportadora || '-'}</td>
+        <td>${s.tipo || '-'}</td>
+        <td>${s.placa || '-'}</td>
+        <td>${s.janelaCarregamento ? formatarDataHoraBR(s.janelaCarregamento) : '-'}</td>
+        <td>${s.nf || '-'}</td>
+        <td>${s.janelaEntrega ? formatarDataHoraBR(s.janelaEntrega) : '-'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Junta as solicitações marcadas numa única Carga Programada (cria a carga + os itens,
+  // e marca as solicitações de origem como "Programada" para saírem da lista de pendentes)
+  function consolidarSolicitacoesEmCarga() {
+    const marcadas = [...document.querySelectorAll('.chkSolPendenteExpedicao:checked')].map(chk =>
+      solicitacoesProgramacaoVeiculo.find(s => String(s.id) === chk.dataset.id)
+    ).filter(Boolean);
+
+    if (marcadas.length === 0) {
+      alert('Marque ao menos uma solicitação para consolidar.');
+      return;
+    }
+
+    const base = marcadas[0];
+    let numeroOC = base.ordemColeta || '';
+    if (!numeroOC) {
+      numeroOC = prompt('Nenhuma das solicitações tem OC definida. Informe o N° OC para esta carga:', '') || '';
+      if (!numeroOC) return;
+    }
+    if (cargasProgramadas.some(c => c.numeroOC === numeroOC)) {
+      alert(`Já existe uma carga programada com a OC "${numeroOC}". Ajuste a OC nas solicitações ou remova/edite a carga existente.`);
+      return;
+    }
+
+    const novaCarga = {
+      id: crypto.randomUUID(),
+      numeroOC,
+      janelaCarregamento: base.janelaCarregamento || new Date().toISOString().slice(0, 16),
+      modalidade: marcadas.length > 1 ? 'Fracionado' : 'Dedicado',
+      transportadora: base.transportadora || '?',
+      tipoVeiculo: '',
+      placa: base.placa || '',
+      veiculoId: null,
+      status: 'Programada'
+    };
+    cargasProgramadas.push(novaCarga);
+    supaInserir('cargas_programadas', novaCarga);
+
+    marcadas.forEach(s => {
+      const novoItem = {
+        id: crypto.randomUUID(),
+        cargaId: novaCarga.id,
+        item: s.item,
+        quantidade: s.quantidade,
+        quantidadePallets: s.pallets || 0,
+        cliente: s.cliente,
+        destino: s.destino,
+        nf: s.nf,
+        janelaEntrega: s.janelaEntrega,
+        status: 'Programado'
+      };
+      itensCarga.push(novoItem);
+      supaInserir('itens_carga', novoItem);
+
+      s.status = 'Programada';
+      s.cargaId = novaCarga.id;
+      supaAtualizar('solicitacoes_programacao_veiculo', s.id, { status: 'Programada', cargaId: novaCarga.id });
+    });
+
+    renderTudo();
+    alert(`Carga ${numeroOC} criada com ${marcadas.length} item(ns)! Veja em "Cargas Programadas" logo abaixo.`);
   }
 
   function renderCargasProgramadas() {
@@ -3286,6 +3879,9 @@
 
     const datalistMat = document.getElementById('datalistMateriais');
     datalistMat.innerHTML = materiais.map(m => `<option value="${m.codigo}">${m.descricao}</option>`).join('');
+
+    const datalistCli = document.getElementById('datalistClientes');
+    if (datalistCli) datalistCli.innerHTML = clientes.map(c => `<option value="${c.cd}">${c.empresa || ''}</option>`).join('');
 
     const selCargaVeiculoProprio = document.getElementById('cargaVeiculoProprio');
     const valorSelecionadoCarga = selCargaVeiculoProprio.value;
@@ -5438,12 +6034,16 @@
   function renderTudo() {
     renderUsuarios();
     renderVeiculos();
+    renderSolicitacoesPendentesExpedicao();
     renderCargasProgramadas();
     renderViagens();
     renderStatusFrota();
     renderEnderecos();
     renderDashboardEnderecos();
     renderMateriais();
+    renderClientes();
+    renderPaletizacaoCadastros();
+    renderSolicitacoesProgramacaoVeiculo();
     atualizarSelects();
     renderSaldo();
     renderHistorico();
