@@ -1660,6 +1660,14 @@
           <label>Data da Solicitação</label>
           <input type="date" id="solMatData" required>
         </div>
+        <div id="campoSolicitanteMatWrap">
+          <label>Solicitante</label>
+          <input type="text" id="solMatSolicitante" placeholder="Nome de quem está solicitando">
+        </div>
+        <div id="campoSolicitanteMatLogado" style="display:none;">
+          <label>Solicitante</label>
+          <input type="text" id="solMatSolicitanteLogadoTexto" readonly style="background:#f3f4f6;">
+        </div>
         <div>
           <button type="submit" class="btn">Registrar Solicitação</button>
         </div>
@@ -1679,6 +1687,7 @@
             <th>Quantidade (Un.)</th>
             <th>Peso Estimado (kg)</th>
             <th>Data</th>
+            <th>Solicitante</th>
             <th class="actions-col">Ação</th>
           </tr>
         </thead>
@@ -1794,7 +1803,7 @@
       qtdNaEmbalagem: 'qtd_na_embalagem', pesoPorVolumeKg: 'peso_por_volume_kg', observacoes: 'observacoes', enderecoId: 'endereco_id',
       usuarioId: 'usuario_id', movimentacaoId: 'movimentacao_id', qtdApontadaFisica: 'qtd_apontada_fisica', divergencia: 'divergencia'
     },
-    solicitacoes_material: { materialId: 'material_id', quantidade: 'quantidade', pesoEstimado: 'peso_estimado', data: 'data' },
+    solicitacoes_material: { materialId: 'material_id', quantidade: 'quantidade', pesoEstimado: 'peso_estimado', data: 'data', solicitante: 'solicitante' },
     veiculos: { placa: 'placa', modelo: 'modelo', capacidadeKg: 'capacidade_kg', capacidadePallets: 'capacidade_pallets', transportadora: 'transportadora', status: 'status', observacao: 'observacao' },
     cargas_programadas: { numeroOC: 'numero_oc', janelaCarregamento: 'janela_carregamento', modalidade: 'modalidade', transportadora: 'transportadora', tipoVeiculo: 'tipo_veiculo', placa: 'placa', veiculoId: 'veiculo_id', status: 'status' },
     itens_carga: { cargaId: 'carga_id', item: 'item', quantidade: 'quantidade', quantidadePallets: 'quantidade_pallets', cliente: 'cliente', destino: 'destino', nf: 'nf', janelaEntrega: 'janela_entrega', status: 'status' },
@@ -1982,6 +1991,9 @@
     atualizarCabecalhoUsuarioLogado();
     aplicarFiltroPermissoes(usuarioLogado);
     aplicarUsuarioLogadoNosFormularios();
+    // Garante que tabelas com campos dependentes de "quem está logado" (Apontamento,
+    // Alocação de Piso etc.) sejam desenhadas de novo já refletindo o login atual.
+    if (typeof renderTudo === 'function') renderTudo();
   }
 
   function mostrarLogin() {
@@ -2012,18 +2024,32 @@
     const wrapSelect = document.getElementById('campoUsuarioMovimentacaoWrap');
     const wrapTexto = document.getElementById('campoUsuarioLogadoMovimentacao');
     const selUsu = document.getElementById('movUsuario');
-    if (!wrapSelect || !wrapTexto || !selUsu) return;
-
-    if (usuarioLogado) {
-      wrapSelect.style.display = 'none';
-      wrapTexto.style.display = 'block';
-      document.getElementById('movUsuarioLogadoTexto').value = `${usuarioLogado.nome} (${usuarioLogado.matricula})`;
-      if ([...selUsu.options].some(o => o.value === String(usuarioLogado.id))) {
-        selUsu.value = usuarioLogado.id;
+    if (wrapSelect && wrapTexto && selUsu) {
+      if (usuarioLogado) {
+        wrapSelect.style.display = 'none';
+        wrapTexto.style.display = 'block';
+        document.getElementById('movUsuarioLogadoTexto').value = `${usuarioLogado.nome} (${usuarioLogado.matricula})`;
+        if ([...selUsu.options].some(o => o.value === String(usuarioLogado.id))) {
+          selUsu.value = usuarioLogado.id;
+        }
+      } else {
+        wrapSelect.style.display = '';
+        wrapTexto.style.display = 'none';
       }
-    } else {
-      wrapSelect.style.display = '';
-      wrapTexto.style.display = 'none';
+    }
+
+    // Mesmo tratamento no campo Solicitante da Solicitação de Separação de Material
+    const wrapSolMatManual = document.getElementById('campoSolicitanteMatWrap');
+    const wrapSolMatLogado = document.getElementById('campoSolicitanteMatLogado');
+    if (wrapSolMatManual && wrapSolMatLogado) {
+      if (usuarioLogado) {
+        wrapSolMatManual.style.display = 'none';
+        wrapSolMatLogado.style.display = 'block';
+        document.getElementById('solMatSolicitanteLogadoTexto').value = usuarioLogado.nome;
+      } else {
+        wrapSolMatManual.style.display = '';
+        wrapSolMatLogado.style.display = 'none';
+      }
     }
   }
 
@@ -3651,6 +3677,7 @@
     const materialId = solMatCodigoMaterialSelect.value;
     const quantidade = parseFloat(document.getElementById('solMatQuantidade').value);
     const data = solMatDataInput.value;
+    const solicitante = usuarioLogado ? usuarioLogado.nome : document.getElementById('solMatSolicitante').value.trim();
 
     if (!materialId || !data || isNaN(quantidade) || quantidade <= 0) return;
 
@@ -3662,7 +3689,8 @@
       materialId,
       quantidade,
       pesoEstimado,
-      data
+      data,
+      solicitante
     };
     solicitacoesMaterial.push(novaSolicitacaoMaterial);
     supaInserir('solicitacoes_material', novaSolicitacaoMaterial);
@@ -3700,6 +3728,7 @@
         <td>${formatarQtd(s.quantidade)}</td>
         <td>${s.pesoEstimado !== null ? formatarQtd(s.pesoEstimado) + ' kg' : '-'}</td>
         <td>${formatarDataBR(s.data)}</td>
+        <td>${s.solicitante || '-'}</td>
         <td class="actions-col"><button class="btn danger" onclick="removerSolicitacaoMaterial('${s.id}')">✕</button></td>
       `;
       tbody.appendChild(tr);
@@ -3837,7 +3866,9 @@
         <td><input type="number" id="qtdEmbalagem_${p.id}" min="0" step="any" placeholder="Ex: 500" style="width:90px;" ${dis}></td>
         <td><input type="number" id="pesoVolume_${p.id}" min="0" step="any" placeholder="Ex: 4.5" style="width:90px;" ${dis}></td>
         <td><input type="text" id="obsApont_${p.id}" placeholder="Opcional" style="width:130px;" ${dis}></td>
-        <td><select id="respApont_${p.id}" style="min-width:130px;" ${dis}>${opcoesUsuarios()}</select></td>
+        <td>${usuarioLogado
+          ? `<input type="hidden" id="respApont_${p.id}" value="${usuarioLogado.id}"><span style="font-size:12px; color:#444;">${usuarioLogado.nome}</span>`
+          : `<select id="respApont_${p.id}" style="min-width:130px;" ${dis}>${opcoesUsuarios()}</select>`}</td>
         <td class="actions-col">
           <button class="btn" style="display:block; width:100%; padding:6px 8px; font-size:12px; background:#157a3d;" onclick="registrarApontamentoTurno('${p.id}')" ${dis}>✔ Apontar</button>
         </td>
@@ -4351,7 +4382,9 @@
         <td class="pos">${formatarQtd(r.saldo)}</td>
         <td><input type="number" id="qtdAlocar_${r.materialId}" min="0.01" max="${r.saldo}" step="any" placeholder="Ex: ${r.saldo}" style="width:100px;" ${dis}></td>
         <td><select id="destAlocar_${r.materialId}" style="min-width:140px;" ${dis}>${opcoesEnderecosSemPiso()}</select></td>
-        <td><select id="respAlocar_${r.materialId}" style="min-width:130px;" ${dis}>${opcoesUsuarios()}</select></td>
+        <td>${usuarioLogado
+          ? `<input type="hidden" id="respAlocar_${r.materialId}" value="${usuarioLogado.id}"><span style="font-size:12px; color:#444;">${usuarioLogado.nome}</span>`
+          : `<select id="respAlocar_${r.materialId}" style="min-width:130px;" ${dis}>${opcoesUsuarios()}</select>`}</td>
         <td class="actions-col">
           <button class="btn" style="display:block; width:100%; padding:6px 8px; font-size:12px; background:#2563eb;" onclick="alocarMaterialPiso('${r.materialId}')" ${dis}>📍 Alocar</button>
         </td>
