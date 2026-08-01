@@ -142,7 +142,7 @@
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    border-radius: 2px;
+    border-radius: 3px;
     border-left: 3px solid transparent;
     text-align: left;
     transition: 0.15s;
@@ -735,6 +735,7 @@
       <span class="cat-arrow">▾</span>
     </button>
     <nav id="configNav">
+      <button data-page="pageMeuPerfil" id="navMeuPerfil"><span class="ico">🙋</span><span class="txt"> Meu Perfil</span></button>
       <button data-page="pageUsuarios"><span class="ico">👤</span><span class="txt"> Usuários</span></button>
     </nav>
   </div>
@@ -764,9 +765,13 @@
     <div class="card">
       <h2>Nova Movimentação</h2>
       <form class="grid" id="formMov">
-        <div>
+        <div id="campoUsuarioMovimentacaoWrap">
           <label>Usuário</label>
           <select id="movUsuario" required></select>
+        </div>
+        <div id="campoUsuarioLogadoMovimentacao" style="display:none;">
+          <label>Usuário</label>
+          <input type="text" id="movUsuarioLogadoTexto" readonly style="background:#f3f4f6;">
         </div>
         <div>
           <label>Endereço (Posição)</label>
@@ -1058,6 +1063,42 @@
       </table>
       </div>
       <div id="msgUsuVazio" class="empty-msg" style="display:none;">Nenhum usuário cadastrado ainda.</div>
+    </div>
+  </div>
+
+  <!-- ===================== MEU PERFIL (sempre acessível a qualquer usuário logado) ===================== -->
+  <div class="page" id="pageMeuPerfil">
+    <div class="page-title">🙋 Configurações / Meu Perfil</div>
+    <div class="page-subtitle">Edite seus dados e sua senha de acesso</div>
+    <div class="card" style="max-width:480px;">
+      <div style="text-align:center; margin-bottom:16px;">
+        <img id="perfilFotoPreview" src="" alt="Foto de perfil" style="width:96px; height:96px; border-radius:50%; object-fit:cover; background:#e2e6ec; display:none;">
+        <div id="perfilFotoPlaceholder" style="width:96px; height:96px; border-radius:50%; background:#e2e6ec; margin:0 auto; display:flex; align-items:center; justify-content:center; font-size:36px;">👤</div>
+        <div style="margin-top:8px;">
+          <label class="btn-file" style="font-size:12.5px; padding:6px 12px;">
+            Trocar foto
+            <input type="file" id="perfilFotoInput" accept="image/*" onchange="preverFotoPerfil(event)">
+          </label>
+        </div>
+      </div>
+
+      <form id="formPerfilRestrito" class="auth-form">
+        <label>Nome completo</label>
+        <input type="text" id="perfilNome" required>
+        <label>E-mail</label>
+        <input type="email" id="perfilEmail" readonly style="background:#f3f4f6;">
+        <label>Matrícula</label>
+        <input type="text" id="perfilMatricula" readonly style="background:#f3f4f6;">
+        <button type="submit" class="btn" style="width:100%;">Salvar Perfil</button>
+        <p id="msgPerfilRestrito" class="auth-hint" style="display:none;"></p>
+      </form>
+
+      <form id="formTrocarSenhaPerfil" class="auth-form" style="margin-top:6px; border-top:1px solid #eee; padding-top:14px;">
+        <label>Nova senha</label>
+        <input type="password" id="perfilNovaSenha" minlength="4" placeholder="Deixe em branco para não alterar">
+        <button type="submit" class="btn" style="width:100%; background:#475569;">Alterar minha senha</button>
+        <p id="msgTrocarSenhaPerfil" class="auth-hint" style="display:none;"></p>
+      </form>
     </div>
   </div>
 
@@ -1677,47 +1718,6 @@
 </div>
 
 <!-- ===================== PERFIL RESTRITO (usuários não-administradores) ===================== -->
-<div id="telaPerfilRestrito" class="tela-auth" style="display:none;">
-  <div class="auth-card" style="max-width:480px;">
-    <div class="auth-logo">📦 Sistema WMS</div>
-    <h2 style="text-align:center; margin-bottom:4px;">Meu Perfil</h2>
-    <p class="auth-hint" style="text-align:center;">Seu acesso é limitado à edição do seu próprio perfil.</p>
-
-    <div style="text-align:center; margin:16px 0;">
-      <img id="perfilFotoPreview" src="" alt="Foto de perfil" style="width:96px; height:96px; border-radius:50%; object-fit:cover; background:#e2e6ec; display:none;">
-      <div id="perfilFotoPlaceholder" style="width:96px; height:96px; border-radius:50%; background:#e2e6ec; margin:0 auto; display:flex; align-items:center; justify-content:center; font-size:36px;">👤</div>
-      <div style="margin-top:8px;">
-        <label class="btn-file" style="font-size:12.5px; padding:6px 12px;">
-          Trocar foto
-          <input type="file" id="perfilFotoInput" accept="image/*" onchange="preverFotoPerfil(event)">
-        </label>
-      </div>
-    </div>
-
-    <form id="formPerfilRestrito" class="auth-form">
-      <label>Nome completo</label>
-      <input type="text" id="perfilNome" required>
-      <label>E-mail</label>
-      <input type="email" id="perfilEmail" readonly style="background:#f3f4f6;">
-      <label>Matrícula</label>
-      <input type="text" id="perfilMatricula" readonly style="background:#f3f4f6;">
-      <button type="submit" class="btn" style="width:100%;">Salvar Perfil</button>
-      <p id="msgPerfilRestrito" class="auth-hint" style="display:none;"></p>
-    </form>
-
-    <!-- Trocar a própria senha, sem precisar de e-mail -->
-    <form id="formTrocarSenhaPerfil" class="auth-form" style="margin-top:6px; border-top:1px solid #eee; padding-top:14px;">
-      <label>Nova senha</label>
-      <input type="password" id="perfilNovaSenha" minlength="4" placeholder="Deixe em branco para não alterar">
-      <button type="submit" class="btn" style="width:100%; background:#475569;">Alterar minha senha</button>
-      <p id="msgTrocarSenhaPerfil" class="auth-hint" style="display:none;"></p>
-    </form>
-
-    <div class="auth-links">
-      <a href="#" onclick="sairDaConta(); return false;">Sair</a>
-    </div>
-  </div>
-</div>
 
 
 <script>
@@ -1916,17 +1916,76 @@
     }
   }
 
+  // Mapeia cada página do sistema para a chave de permissão correspondente em MODULOS_SISTEMA.
+  // Páginas que não aparecem aqui (ex: Meu Perfil) ficam sempre visíveis a qualquer logado.
+  const PAGINA_PARA_PERMISSAO = {
+    pageMovimentacao: ['estoque', 'movimentacao'],
+    pageSaldo: ['estoque', 'saldo'],
+    pageEnderecos: ['estoque', 'enderecos'],
+    pageMateriais: ['estoque', 'materiais'],
+    pageVerificacaoEstoque: ['estoque', 'verificacaoEstoque'],
+    pageApontamentoProducao: ['estoque', 'apontamentoProducao'],
+    pageAlocacaoPiso: ['estoque', 'alocacaoPiso'],
+    pageSequenciamentoProducao: ['estoque', 'sequenciamentoProducao'],
+    pageSolicitacaoVerificacao: ['comercial', 'solicitacaoVerificacao'],
+    pageSolicitacaoMaterial: ['comercial', 'solicitacaoMaterial'],
+    pageProgramacaoCargas: ['expedicao', 'programacao'],
+    pageCadastroVeiculos: ['expedicao', 'cadastroVeiculos'],
+    pageViagensProgramadas: ['expedicao', 'viagensProgramadas'],
+    pageUsuarios: ['configuracoes', 'usuarios']
+  };
+
+  // Mostra/esconde os itens da sidebar conforme as permissões do usuário logado.
+  // Administrador (ou ninguém logado, no modo sem login) vê tudo, sem filtro nenhum.
+  function aplicarFiltroPermissoes(usuario) {
+    const todosBotoes = document.querySelectorAll('nav[id] button[data-page]');
+
+    if (!usuario || usuario.cargo === 'Administrador') {
+      todosBotoes.forEach(btn => { btn.style.display = ''; });
+      document.querySelectorAll('.nav-group').forEach(g => { g.style.display = ''; });
+      return;
+    }
+
+    const permissoes = mesclarPermissoesComPadrao(usuario.permissoes, usuario.cargo);
+    let primeiraPaginaPermitida = null;
+
+    todosBotoes.forEach(btn => {
+      const pageId = btn.getAttribute('data-page');
+      const chave = PAGINA_PARA_PERMISSAO[pageId];
+      const permitido = !chave || (permissoes[chave[0]] && permissoes[chave[0]][chave[1]]);
+      btn.style.display = permitido ? '' : 'none';
+      if (permitido && !primeiraPaginaPermitida && pageId !== 'pageMeuPerfil') primeiraPaginaPermitida = pageId;
+    });
+
+    // Esconde a categoria inteira se nenhum item dela sobrou visível
+    document.querySelectorAll('.nav-group').forEach(grupo => {
+      const temAlgumVisivel = [...grupo.querySelectorAll('nav[id] button[data-page]')].some(b => b.style.display !== 'none');
+      grupo.style.display = temAlgumVisivel ? '' : 'none';
+    });
+
+    // Se a página atualmente exibida não é permitida para esse usuário, troca para a primeira que for
+    const paginaAtiva = document.querySelector('.page.active');
+    if (paginaAtiva) {
+      const chaveAtiva = PAGINA_PARA_PERMISSAO[paginaAtiva.id];
+      const aindaPermitido = !chaveAtiva || (permissoes[chaveAtiva[0]] && permissoes[chaveAtiva[0]][chaveAtiva[1]]);
+      if (!aindaPermitido && primeiraPaginaPermitida) {
+        const botaoAlvo = document.querySelector(`button[data-page="${primeiraPaginaPermitida}"]`);
+        if (botaoAlvo) botaoAlvo.click();
+      }
+    }
+  }
+
   function mostrarApp() {
     document.getElementById('telaLogin').style.display = 'none';
-    document.getElementById('telaPerfilRestrito').style.display = 'none';
     document.getElementById('wrapperAppPrincipal').style.display = 'block';
     atualizarRodapeUsuarioLogado();
     atualizarCabecalhoUsuarioLogado();
+    aplicarFiltroPermissoes(usuarioLogado);
+    aplicarUsuarioLogadoNosFormularios();
   }
 
   function mostrarLogin() {
     document.getElementById('wrapperAppPrincipal').style.display = 'none';
-    document.getElementById('telaPerfilRestrito').style.display = 'none';
     document.getElementById('telaLogin').style.display = 'flex';
 
     const select = document.getElementById('loginUsuarioId');
@@ -1934,10 +1993,8 @@
       usuarios.map(u => `<option value="${u.id}">${u.nome} (${u.matricula})</option>`).join('');
   }
 
-  function mostrarPerfilRestrito() {
-    document.getElementById('wrapperAppPrincipal').style.display = 'none';
-    document.getElementById('telaLogin').style.display = 'none';
-    document.getElementById('telaPerfilRestrito').style.display = 'flex';
+  function preencherFormularioPerfil() {
+    if (!usuarioLogado) return;
     document.getElementById('perfilNome').value = usuarioLogado.nome || '';
     document.getElementById('perfilEmail').value = usuarioLogado.email || '';
     document.getElementById('perfilMatricula').value = usuarioLogado.matricula || '';
@@ -1948,13 +2005,32 @@
     }
   }
 
+  // Quando há alguém logado, esconde o select "Usuário" da Movimentação e usa
+  // automaticamente quem está logado — não faz mais sentido escolher manualmente
+  // quem fez a movimentação já que o sistema sabe isso pela sessão.
+  function aplicarUsuarioLogadoNosFormularios() {
+    const wrapSelect = document.getElementById('campoUsuarioMovimentacaoWrap');
+    const wrapTexto = document.getElementById('campoUsuarioLogadoMovimentacao');
+    const selUsu = document.getElementById('movUsuario');
+    if (!wrapSelect || !wrapTexto || !selUsu) return;
+
+    if (usuarioLogado) {
+      wrapSelect.style.display = 'none';
+      wrapTexto.style.display = 'block';
+      document.getElementById('movUsuarioLogadoTexto').value = `${usuarioLogado.nome} (${usuarioLogado.matricula})`;
+      if ([...selUsu.options].some(o => o.value === String(usuarioLogado.id))) {
+        selUsu.value = usuarioLogado.id;
+      }
+    } else {
+      wrapSelect.style.display = '';
+      wrapTexto.style.display = 'none';
+    }
+  }
+
   function entrarComUsuario(usuario) {
     usuarioLogado = usuario;
-    if (usuario.cargo === 'Administrador') {
-      mostrarApp();
-    } else {
-      mostrarPerfilRestrito();
-    }
+    preencherFormularioPerfil();
+    mostrarApp();
   }
 
   async function inicializarAutenticacao() {
@@ -2185,7 +2261,8 @@
         { chave: 'materiais', label: 'Materiais' },
         { chave: 'verificacaoEstoque', label: 'Verificação de Solicitações' },
         { chave: 'apontamentoProducao', label: 'Apontamento de Material Produzido' },
-        { chave: 'alocacaoPiso', label: 'Alocar Material do Piso' }
+        { chave: 'alocacaoPiso', label: 'Alocar Material do Piso' },
+        { chave: 'sequenciamentoProducao', label: 'Sequenciamento de Produção' }
     ]},
     { categoria: 'Comercial', chave: 'comercial', paginas: [
         { chave: 'solicitacaoVerificacao', label: 'Solicitação de verificação de Estoque' },
@@ -3162,6 +3239,7 @@
     selEnd.innerHTML = enderecos.map(en => `<option value="${en.id}">${en.codigo}${labelEndereco(en) ? ' - ' + labelEndereco(en) : ''}</option>`).join('');
     selMat.innerHTML = materiais.map(m => `<option value="${m.id}">${m.codigo} - ${m.descricao}</option>`).join('');
     selSolMatMaterial.innerHTML = '<option value="">Selecione...</option>' + materiais.map(m => `<option value="${m.id}">${m.codigo}</option>`).join('');
+    aplicarUsuarioLogadoNosFormularios();
 
     const aviso = document.getElementById('avisoCadastros');
     const podeMovimentar = usuarios.length > 0 && enderecos.length > 0 && materiais.length > 0;
