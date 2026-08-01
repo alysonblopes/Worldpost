@@ -135,14 +135,14 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background: #f2f2f2;
+    background: #e9edf2;
     border: none;
     color: #1d4ed8;
     padding: 11px 12px;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    border-radius: 3px;
+    border-radius: 5px;
     border-left: 3px solid transparent;
     text-align: left;
     transition: 0.15s;
@@ -874,7 +874,7 @@
           <tr>
             <th style="width:30px;">Sel.</th>
             <th>OC</th><th>Item</th><th>Quantidade</th><th>Pallets</th>
-            <th>Cliente</th><th>Destino</th><th>Endereço</th>
+            <th>Cliente</th><th>Destino</th><th>Endereço</th><th>Cidade</th>
             <th>Transportadora</th><th>Tipo</th><th>Placa</th>
             <th>Janela Carreg.</th><th>NF</th><th>Janela Entrega</th>
           </tr>
@@ -1164,6 +1164,10 @@
           <input type="text" id="clienteEndereco" placeholder="Ex: Rod. DF 290 KM 1.2...">
         </div>
         <div>
+          <label>Cidade</label>
+          <input type="text" id="clienteCidade" placeholder="Ex: Guarulhos, SP">
+        </div>
+        <div>
           <label>CNPJ</label>
           <input type="text" id="clienteCnpj" placeholder="Ex: 15.436.940/0010-96">
         </div>
@@ -1172,17 +1176,19 @@
           <input type="text" id="clienteEmpresa" placeholder="Ex: Amazon Serviços de Varejo">
         </div>
         <div>
-          <button type="submit" class="btn">Cadastrar Cliente</button>
+          <button type="submit" class="btn" id="btnSalvarCliente">Cadastrar Cliente</button>
+          <button type="button" class="btn" style="background:#94a3b8; display:none;" id="btnCancelarEdicaoCliente" onclick="cancelarEdicaoCliente()">Cancelar Edição</button>
         </div>
       </form>
     </div>
     <div class="card">
       <h2>Clientes Cadastrados</h2>
+      <p class="toolbar-hint">Clique em "✏️ Editar" pra carregar os dados do cliente no formulário acima e alterar.</p>
       <div class="table-wrap">
       <table id="tabelaClientes">
         <thead><tr>
-          <th>CD</th><th>Endereço</th><th>CNPJ</th><th>Empresa</th>
-          <th class="actions-col">Ação</th>
+          <th>CD</th><th>Endereço</th><th>Cidade</th><th>CNPJ</th><th>Empresa</th>
+          <th class="actions-col" style="width:110px;">Ação</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -1876,6 +1882,10 @@
           <input type="text" id="spvEndereco" placeholder="Preenchido automaticamente" readonly>
         </div>
         <div>
+          <label>Cidade</label>
+          <input type="text" id="spvCidade" placeholder="Preenchido automaticamente" readonly>
+        </div>
+        <div>
           <label>NF</label>
           <input type="text" id="spvNf" placeholder="Opcional">
         </div>
@@ -1906,7 +1916,7 @@
           <tr>
             <th>OC</th><th>Janela Carreg.</th><th>Transp.</th><th>Tipo</th><th>Placa</th>
             <th>Item</th><th>Quantidade</th><th>Pallets</th><th>Cliente</th><th>Destino</th>
-            <th>Endereço</th><th>NF</th><th>Janela Entrega</th><th>Status</th>
+            <th>Endereço</th><th>Cidade</th><th>NF</th><th>Janela Entrega</th><th>Status</th>
             <th class="actions-col">Ação</th>
           </tr>
         </thead>
@@ -2034,11 +2044,11 @@
       campoCategoriaMaquina: 'campo_categoria_maquina', campoCliente: 'campo_cliente',
       campoSequencia: 'campo_sequencia', campoStatus: 'campo_status'
     },
-    clientes: { cd: 'cd', endereco: 'endereco', cnpj: 'cnpj', empresa: 'empresa' },
+    clientes: { cd: 'cd', endereco: 'endereco', cidade: 'cidade', cnpj: 'cnpj', empresa: 'empresa' },
     solicitacoes_programacao_veiculo: {
       ordemColeta: 'ordem_coleta', janelaCarregamento: 'janela_carregamento', transportadora: 'transportadora',
       tipo: 'tipo', placa: 'placa', item: 'item', quantidade: 'quantidade', pallets: 'pallets',
-      cliente: 'cliente', destino: 'destino', endereco: 'endereco', nf: 'nf', janelaEntrega: 'janela_entrega',
+      cliente: 'cliente', destino: 'destino', endereco: 'endereco', cidade: 'cidade', nf: 'nf', janelaEntrega: 'janela_entrega',
       status: 'status', cargaId: 'carga_id', solicitante: 'solicitante'
     }
   };
@@ -2526,30 +2536,60 @@
 
   // ============== CADASTROS > CLIENTES ==============
   const formCliente = document.getElementById('formCliente');
+  let clienteEmEdicaoId = null;
+
   formCliente.addEventListener('submit', e => {
     e.preventDefault();
     const cd = document.getElementById('clienteCd').value.trim().toUpperCase();
     const endereco = document.getElementById('clienteEndereco').value.trim();
+    const cidade = document.getElementById('clienteCidade').value.trim();
     const cnpj = document.getElementById('clienteCnpj').value.trim();
     const empresa = document.getElementById('clienteEmpresa').value.trim();
     if (!cd) return;
 
-    const existente = clientes.find(c => c.cd === cd);
+    // Se estiver editando, atualiza pelo ID (evita colisão caso o próprio CD tenha mudado);
+    // senão, busca por CD (upsert) — mantém compatível com reimportação de planilha.
+    const existente = clienteEmEdicaoId
+      ? clientes.find(c => String(c.id) === String(clienteEmEdicaoId))
+      : clientes.find(c => c.cd === cd);
+
     if (existente) {
-      Object.assign(existente, { endereco, cnpj, empresa });
-      supaAtualizar('clientes', existente.id, { endereco, cnpj, empresa });
+      Object.assign(existente, { cd, endereco, cidade, cnpj, empresa });
+      supaAtualizar('clientes', existente.id, { cd, endereco, cidade, cnpj, empresa });
     } else {
-      const novoCliente = { id: crypto.randomUUID(), cd, endereco, cnpj, empresa };
+      const novoCliente = { id: crypto.randomUUID(), cd, endereco, cidade, cnpj, empresa };
       clientes.push(novoCliente);
       supaInserir('clientes', novoCliente);
     }
-    formCliente.reset();
+    cancelarEdicaoCliente();
     renderTudo();
   });
+
+  function editarCliente(id) {
+    const c = clientes.find(c => String(c.id) === String(id));
+    if (!c) return;
+    clienteEmEdicaoId = id;
+    document.getElementById('clienteCd').value = c.cd || '';
+    document.getElementById('clienteEndereco').value = c.endereco || '';
+    document.getElementById('clienteCidade').value = c.cidade || '';
+    document.getElementById('clienteCnpj').value = c.cnpj || '';
+    document.getElementById('clienteEmpresa').value = c.empresa || '';
+    document.getElementById('btnSalvarCliente').textContent = 'Salvar Alterações';
+    document.getElementById('btnCancelarEdicaoCliente').style.display = 'inline-block';
+    document.getElementById('formCliente').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function cancelarEdicaoCliente() {
+    clienteEmEdicaoId = null;
+    formCliente.reset();
+    document.getElementById('btnSalvarCliente').textContent = 'Cadastrar Cliente';
+    document.getElementById('btnCancelarEdicaoCliente').style.display = 'none';
+  }
 
   function removerCliente(id) {
     clientes = clientes.filter(c => String(c.id) !== String(id));
     supaRemover('clientes', id);
+    if (clienteEmEdicaoId === id) cancelarEdicaoCliente();
     renderTudo();
   }
 
@@ -2570,9 +2610,13 @@
       tr.innerHTML = `
         <td><span class="badge">${c.cd}</span></td>
         <td>${c.endereco || '-'}</td>
+        <td>${c.cidade || '-'}</td>
         <td>${c.cnpj || '-'}</td>
         <td>${c.empresa || '-'}</td>
-        <td class="actions-col"><button class="btn danger" onclick="removerCliente('${c.id}')">✕</button></td>
+        <td class="actions-col">
+          <button class="btn" style="display:block; width:100%; padding:5px 8px; font-size:12px; margin-bottom:4px;" onclick="editarCliente('${c.id}')">✏️ Editar</button>
+          <button class="btn danger" style="display:block; width:100%; padding:5px 8px; font-size:12px;" onclick="removerCliente('${c.id}')">✕</button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
@@ -2598,16 +2642,17 @@
       if (!cd) { ignorados++; return; }
 
       const endereco = String(valorColuna(linha, 'ENDEREÇO', 'ENDERECO')).trim();
+      const cidade = String(valorColuna(linha, 'CIDADE')).trim();
       const cnpj = String(valorColuna(linha, 'CNPJ')).trim();
       const empresa = String(valorColuna(linha, 'EMPRESA')).trim();
 
       const existente = clientes.find(c => c.cd === cd);
       if (existente) {
-        Object.assign(existente, { endereco, cnpj, empresa });
-        supaAtualizar('clientes', existente.id, { endereco, cnpj, empresa });
+        Object.assign(existente, { endereco, cidade, cnpj, empresa });
+        supaAtualizar('clientes', existente.id, { endereco, cidade, cnpj, empresa });
         atualizados++;
       } else {
-        const novoCliente = { id: crypto.randomUUID(), cd, endereco, cnpj, empresa };
+        const novoCliente = { id: crypto.randomUUID(), cd, endereco, cidade, cnpj, empresa };
         clientes.push(novoCliente);
         supaInserir('clientes', novoCliente);
         criados++;
@@ -2681,6 +2726,7 @@
     const destino = document.getElementById('spvDestino').value.trim().toUpperCase();
     const cliente = clientes.find(c => c.cd === destino);
     document.getElementById('spvEndereco').value = cliente ? (cliente.endereco || '') : '';
+    document.getElementById('spvCidade').value = cliente ? (cliente.cidade || '') : '';
   }
   document.getElementById('spvDestino').addEventListener('input', atualizarEnderecoSpv);
 
@@ -2708,6 +2754,7 @@
       cliente: document.getElementById('spvCliente').value.trim(),
       destino,
       endereco: document.getElementById('spvEndereco').value.trim(),
+      cidade: document.getElementById('spvCidade').value.trim(),
       nf: document.getElementById('spvNf').value.trim(),
       janelaEntrega: je || null,
       status: 'Pendente',
@@ -2758,6 +2805,7 @@
         <td>${s.cliente || '-'}</td>
         <td>${s.destino}</td>
         <td>${s.endereco || '-'}</td>
+        <td>${s.cidade || '-'}</td>
         <td>${s.nf || '-'}</td>
         <td>${s.janelaEntrega ? formatarDataHoraBR(s.janelaEntrega) : '-'}</td>
         <td>${s.status}</td>
@@ -3090,7 +3138,18 @@
       .reduce((soma, it) => soma + (it.quantidadePallets || 0), 0);
   }
 
-  function adicionarItemCarga(cargaId) {
+  let itemCargaEmEdicaoId = null;
+
+  function reabrirDetalheCarga(cargaId) {
+    setTimeout(() => {
+      const linha = document.getElementById('detalhe_' + cargaId);
+      if (linha) linha.style.display = 'table-row';
+      const seta = document.getElementById('seta_' + cargaId);
+      if (seta) seta.classList.add('aberto');
+    }, 0);
+  }
+
+  function adicionarOuSalvarItemCarga(cargaId) {
     const itemInput = document.getElementById('itemNome_' + cargaId);
     const qtdInput = document.getElementById('itemQtd_' + cargaId);
     const palletsInput = document.getElementById('itemPallets_' + cargaId);
@@ -3107,21 +3166,22 @@
     const destino = destinoInput.value.trim().toUpperCase();
 
     if (!item || isNaN(quantidade) || quantidade <= 0 || !destino) {
-      alert('Informe ao menos Item, Quantidade e Destino antes de adicionar.');
+      alert('Informe ao menos Item, Quantidade e Destino antes de salvar.');
       return;
     }
 
-    // Valida a quantidade de pallets contra a capacidade do veículo vinculado à carga (quando conhecido)
+    // Valida a quantidade de pallets contra a capacidade do veículo vinculado à carga (quando conhecido),
+    // descontando o próprio item se estiver sendo editado (senão ele conta em dobro).
     if (quantidadePallets > 0) {
       const carga = cargasProgramadas.find(c => String(c.id) === String(cargaId));
       const veiculo = getVeiculoDaCarga(carga);
       if (veiculo && veiculo.capacidadePallets) {
-        const jaUsados = calcularPalletsUsados(cargaId);
+        const jaUsados = calcularPalletsUsados(cargaId, itemCargaEmEdicaoId);
         const totalComEsteItem = jaUsados + quantidadePallets;
         if (totalComEsteItem > veiculo.capacidadePallets) {
           alert(
-            `⚠ Não é possível adicionar: essa carga já soma ${formatarQtd(jaUsados)} pallets. ` +
-            `Adicionando ${formatarQtd(quantidadePallets)} pallets chegaria a ${formatarQtd(totalComEsteItem)}, ` +
+            `⚠ Não é possível salvar: essa carga já soma ${formatarQtd(jaUsados)} pallets. ` +
+            `Esse item chegaria a ${formatarQtd(totalComEsteItem)}, ` +
             `que ultrapassa a capacidade do veículo ${veiculo.placa} (${formatarQtd(veiculo.capacidadePallets)} pallets).`
           );
           return;
@@ -3129,34 +3189,79 @@
       }
     }
 
-    const novoItem = {
-      id: crypto.randomUUID(),
-      cargaId,
-      item,
-      quantidade,
-      quantidadePallets,
-      cliente,
-      destino,
+    const dadosItem = {
+      item, quantidade, quantidadePallets, cliente, destino,
       nf: nfInput.value.trim(),
       janelaEntrega: entregaInput.value,
       status: statusSelect.value
     };
-    itensCarga.push(novoItem);
-    supaInserir('itens_carga', novoItem);
+
+    if (itemCargaEmEdicaoId) {
+      const existente = itensCarga.find(it => String(it.id) === String(itemCargaEmEdicaoId));
+      if (existente) {
+        Object.assign(existente, dadosItem);
+        supaAtualizar('itens_carga', existente.id, dadosItem);
+      }
+      itemCargaEmEdicaoId = null;
+    } else {
+      const novoItem = { id: crypto.randomUUID(), cargaId, ...dadosItem };
+      itensCarga.push(novoItem);
+      supaInserir('itens_carga', novoItem);
+    }
 
     renderTudo();
-    // Mantém o detalhe da carga aberto após adicionar um item
-    setTimeout(() => {
-      const linha = document.getElementById('detalhe_' + cargaId);
-      if (linha) linha.style.display = 'table-row';
-      const seta = document.getElementById('seta_' + cargaId);
-      if (seta) seta.classList.add('aberto');
-    }, 0);
+    reabrirDetalheCarga(cargaId);
+  }
+
+  function editarItemCarga(itemId, cargaId) {
+    const it = itensCarga.find(i => String(i.id) === String(itemId));
+    if (!it) return;
+    itemCargaEmEdicaoId = itemId;
+    document.getElementById('itemNome_' + cargaId).value = it.item || '';
+    document.getElementById('itemQtd_' + cargaId).value = it.quantidade || '';
+    document.getElementById('itemPallets_' + cargaId).value = it.quantidadePallets || '';
+    document.getElementById('itemCliente_' + cargaId).value = it.cliente || '';
+    document.getElementById('itemDestino_' + cargaId).value = it.destino || '';
+    document.getElementById('itemNf_' + cargaId).value = it.nf || '';
+    document.getElementById('itemEntrega_' + cargaId).value = it.janelaEntrega || '';
+    document.getElementById('itemStatus_' + cargaId).value = it.status || 'Programado';
+    const btn = document.getElementById('btnItemCarga_' + cargaId);
+    if (btn) btn.textContent = '💾 Salvar Item';
+    reabrirDetalheCarga(cargaId);
+  }
+
+  // Atualiza os dados de cabeçalho da carga (OC, janela, transportadora, tipo, placa)
+  function salvarEdicaoCarga(cargaId) {
+    const carga = cargasProgramadas.find(c => String(c.id) === String(cargaId));
+    if (!carga) return;
+
+    const novoOC = document.getElementById('editOC_' + cargaId).value.trim();
+    if (!novoOC) { alert('O N° OC não pode ficar em branco.'); return; }
+    if (cargasProgramadas.some(c => c.numeroOC === novoOC && String(c.id) !== String(cargaId))) {
+      alert(`Já existe outra carga com a OC "${novoOC}".`);
+      return;
+    }
+
+    const campos = {
+      numeroOC: novoOC,
+      janelaCarregamento: document.getElementById('editJanela_' + cargaId).value,
+      modalidade: document.getElementById('editModalidade_' + cargaId).value,
+      transportadora: document.getElementById('editTransportadora_' + cargaId).value.trim(),
+      tipoVeiculo: document.getElementById('editTipoVeiculo_' + cargaId).value.trim(),
+      placa: document.getElementById('editPlaca_' + cargaId).value.trim().toUpperCase()
+    };
+    Object.assign(carga, campos);
+    supaAtualizar('cargas_programadas', cargaId, campos);
+
+    renderTudo();
+    reabrirDetalheCarga(cargaId);
+    alert('Carga atualizada!');
   }
 
   function removerItemCarga(itemId, cargaId) {
     itensCarga = itensCarga.filter(it => String(it.id) !== String(itemId));
     supaRemover('itens_carga', itemId);
+    if (itemCargaEmEdicaoId === itemId) itemCargaEmEdicaoId = null;
     renderTudo();
     setTimeout(() => {
       const linha = document.getElementById('detalhe_' + cargaId);
@@ -3252,6 +3357,7 @@
         <td>${s.cliente || '-'}</td>
         <td>${s.destino}</td>
         <td>${s.endereco || '-'}</td>
+        <td>${s.cidade || '-'}</td>
         <td>${s.transportadora || '-'}</td>
         <td>${s.tipo || '-'}</td>
         <td>${s.placa || '-'}</td>
@@ -3383,7 +3489,10 @@
               <option value="Cancelado" ${it.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
             </select>
           </td>
-          <td class="actions-col"><button class="btn danger" onclick="removerItemCarga('${it.id}', '${c.id}')">✕</button></td>
+          <td class="actions-col">
+            <button class="btn" style="display:block; width:100%; padding:4px 6px; font-size:11px; margin-bottom:3px; background:#475569;" onclick="editarItemCarga('${it.id}', '${c.id}')">✏️</button>
+            <button class="btn danger" style="display:block; width:100%; padding:4px 6px; font-size:11px;" onclick="removerItemCarga('${it.id}', '${c.id}')">✕</button>
+          </td>
         </tr>
       `).join('');
 
@@ -3402,6 +3511,19 @@
       trDetalhe.innerHTML = `
         <td colspan="10">
           <div onclick="event.stopPropagation();">
+            <div class="detalhe-fisica" style="flex-wrap:wrap; background:#eff6ff; padding:10px; border-radius:8px; margin-bottom:12px;">
+              <strong style="width:100%; font-size:12.5px; color:#1e40af;">✏️ Editar dados da carga:</strong>
+              <input type="text" id="editOC_${c.id}" value="${c.numeroOC}" placeholder="N° OC" style="width:110px;">
+              <input type="datetime-local" id="editJanela_${c.id}" value="${c.janelaCarregamento || ''}" style="width:180px;">
+              <select id="editModalidade_${c.id}" style="min-width:110px;">
+                <option value="Dedicado" ${c.modalidade === 'Dedicado' ? 'selected' : ''}>Dedicado</option>
+                <option value="Fracionado" ${c.modalidade === 'Fracionado' ? 'selected' : ''}>Fracionado</option>
+              </select>
+              <input type="text" id="editTransportadora_${c.id}" value="${c.transportadora || ''}" placeholder="Transportadora" style="width:120px;">
+              <input type="text" id="editTipoVeiculo_${c.id}" value="${c.tipoVeiculo || ''}" placeholder="Tipo de Veículo" style="width:110px;">
+              <input type="text" id="editPlaca_${c.id}" value="${c.placa || ''}" placeholder="Placa" style="width:90px;">
+              <button class="btn" style="background:#1d4ed8;" onclick="salvarEdicaoCarga('${c.id}')">💾 Salvar Alterações da Carga</button>
+            </div>
             ${resumoCapacidade}
             <table style="margin-bottom:12px;">
               <thead>
@@ -3427,7 +3549,7 @@
                 <option value="Entregue">Entregue</option>
                 <option value="Cancelado">Cancelado</option>
               </select>
-              <button class="btn" style="background:#157a3d;" onclick="adicionarItemCarga('${c.id}')">+ Adicionar Item</button>
+              <button class="btn" id="btnItemCarga_${c.id}" style="background:#157a3d;" onclick="adicionarOuSalvarItemCarga('${c.id}')">+ Adicionar Item</button>
               ${jaConvertida
                 ? '<span class="empty-msg" style="padding:0;">✔ Já convertida em viagem</span>'
                 : `<button class="btn" style="background:#2563eb;" onclick="converterCargaEmViagem('${c.id}')">🚚 Converter em Viagem</button>`}
