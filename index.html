@@ -84,7 +84,7 @@
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #6f85a3;
+    color: #5b9bf5;
   }
 
   .nav-group { margin-bottom: 4px; padding-top: 6px; }
@@ -100,14 +100,14 @@
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #9fb0c9;
+    color: #5b9bf5;
     background: transparent;
     border: none;
     width: 100%;
     cursor: pointer;
     text-align: left;
   }
-  .nav-category:hover { color: #fff; }
+  .nav-category:hover { color: #8ab8ff; }
   .nav-category .cat-left { display: flex; align-items: center; gap: 8px; }
   .nav-category .cat-arrow {
     transition: transform 0.2s ease;
@@ -135,23 +135,39 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background: transparent;
+    background: #e9edf2;
     border: none;
-    color: #cfd9e8;
+    color: #1d4ed8;
     padding: 11px 12px;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: 3px;
     border-left: 3px solid transparent;
     text-align: left;
     transition: 0.15s;
   }
   nav button .ico { font-size: 15px; width: 18px; text-align: center; }
-  nav button:hover { color: #fff; background: rgba(255,255,255,0.06); }
+  nav button:hover { background: #dbe2ea; }
   nav button.active {
     color: #fff;
     background: #2563eb;
+  }
+  /* Reservado para itens que o usuário logado não tem permissão de acessar */
+  nav button.sem-permissao {
+    color: #8b95a3;
+    background: #eef0f3;
+    cursor: not-allowed;
+  }
+  nav button.sem-permissao:hover { color: #8b95a3; background: #eef0f3; }
+  nav button:not(.active) .ico {
+    filter: grayscale(1) brightness(0.75);
+    opacity: 0.8;
+  }
+  nav button.active .ico { opacity: 1; filter: grayscale(1) brightness(2.2); }
+  .nav-category .ico {
+    filter: grayscale(1) brightness(1.6);
+    opacity: 0.85;
   }
   .nav-badge {
     display: none;
@@ -359,6 +375,9 @@
     border-bottom: 1px solid #e5e9ee;
   }
   th { background: #f0f3f7; color: #333; }
+  th.th-ordenavel { cursor: pointer; user-select: none; }
+  th.th-ordenavel:hover { background: #e2e8f0; }
+  .seta-ordenacao { font-size: 10px; color: #2563eb; margin-left: 3px; display: inline-block; width: 10px; }
   tr:hover { background: #fafbfc; }
   .entrada { color: #157a3d; font-weight: 600; }
   .saida { color: #c0392b; font-weight: 600; }
@@ -481,6 +500,25 @@
     justify-content: flex-end;
     margin-top: 10px;
   }
+
+  .dashboard-enderecos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border-left: 4px solid #157a3d;
+  }
+  .stat-card.ocupado { border-left-color: #b45309; }
+  .stat-card.piso { border-left-color: #2563eb; }
+  .stat-card.saturacao { border-left-color: #7c3aed; }
+  .stat-valor { font-size: 28px; font-weight: 800; color: #1f2937; line-height: 1.1; }
+  .stat-label { font-size: 12.5px; color: #666; margin-top: 4px; font-weight: 600; }
 
   .permissoes-wrap { display: flex; flex-wrap: wrap; gap: 20px; }
   .permissoes-categoria {
@@ -626,7 +664,7 @@
     <div class="subtitle">Cadastros e controle de movimentações</div>
   </div>
 
-  <div class="nav-group" id="grupoEstoque">
+  <div class="nav-group collapsed" id="grupoEstoque">
     <button class="nav-category" id="toggleEstoque">
       <span class="cat-left"><span class="ico">📦</span><span class="txt">Estoque</span></span>
       <span class="cat-arrow">▾</span>
@@ -634,7 +672,6 @@
     <nav id="mainNav">
       <button data-page="pageMovimentacao" class="active"><span class="ico">🔄</span><span class="txt"> Movimentação</span></button>
       <button data-page="pageSaldo"><span class="ico">📊</span><span class="txt"> Saldo</span></button>
-      <button data-page="pageHistorico"><span class="ico">🕑</span><span class="txt"> Histórico</span></button>
       <button data-page="pageEnderecos"><span class="ico">📍</span><span class="txt"> Endereços</span></button>
       <button data-page="pageMateriais"><span class="ico">🏷️</span><span class="txt"> Materiais</span></button>
       <button data-page="pageVerificacaoEstoque"><span class="ico">🔍</span><span class="txt"> Verificação de Solicitações</span><span class="nav-badge" id="badgeVerificacaoEstoque">0</span></button>
@@ -644,7 +681,7 @@
     </nav>
   </div>
 
-  <div class="nav-group" id="grupoComercial">
+  <div class="nav-group collapsed" id="grupoComercial">
     <button class="nav-category" id="toggleComercial">
       <span class="cat-left"><span class="ico">💼</span><span class="txt">Comercial</span></span>
       <span class="cat-arrow">▾</span>
@@ -655,7 +692,7 @@
     </nav>
   </div>
 
-  <div class="nav-group" id="grupoExpedicao">
+  <div class="nav-group collapsed" id="grupoExpedicao">
     <button class="nav-category" id="toggleExpedicao">
       <span class="cat-left"><span class="ico">🚚</span><span class="txt">Expedição</span></span>
       <span class="cat-arrow">▾</span>
@@ -667,7 +704,7 @@
     </nav>
   </div>
 
-  <div class="nav-group" id="grupoConfig">
+  <div class="nav-group collapsed" id="grupoConfig">
     <button class="nav-category" id="toggleConfig">
       <span class="cat-left"><span class="ico">⚙️</span><span class="txt">Configurações</span></span>
       <span class="cat-arrow">▾</span>
@@ -690,7 +727,7 @@
   <!-- ===================== MOVIMENTAÇÃO ===================== -->
   <div class="page active" id="pageMovimentacao">
     <div class="page-title">🔄 Estoque / Movimentação</div>
-    <div class="page-subtitle">Registre entradas e saídas de material por posição</div>
+    <div class="page-subtitle">Registre entradas e saídas de material por posição — e acompanhe o histórico logo abaixo</div>
     <div class="card">
       <h2>Nova Movimentação</h2>
       <form class="grid" id="formMov">
@@ -725,6 +762,21 @@
         ⚠ Cadastre ao menos um Usuário, um Endereço e um Material antes de registrar movimentações.
       </p>
     </div>
+    <div class="card">
+      <h2>Histórico Recente</h2>
+      <div class="table-wrap">
+      <table id="tabelaHistoricoMovimentacao">
+        <thead>
+          <tr>
+            <th>Data/Hora</th><th>Usuário</th><th>Posição</th><th>Material</th>
+            <th>Tipo</th><th>Quantidade</th><th>Observação</th><th class="actions-col">Ação</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgHistMovimentacaoVazio" class="empty-msg" style="display:none;">Nenhuma movimentação registrada ainda.</div>
+    </div>
   </div>
 
   <!-- ===================== SALDO ===================== -->
@@ -754,27 +806,6 @@
       </table>
       </div>
       <div id="msgSaldoVazio" class="empty-msg" style="display:none;">Nenhum saldo registrado ainda.</div>
-    </div>
-  </div>
-
-  <!-- ===================== HISTÓRICO ===================== -->
-  <div class="page" id="pageHistorico">
-    <div class="page-title">🕑 Estoque / Histórico</div>
-    <div class="page-subtitle">Todas as movimentações registradas</div>
-    <div class="card">
-      <h2>Histórico de Movimentações</h2>
-      <div class="table-wrap">
-      <table id="tabelaHistorico">
-        <thead>
-          <tr>
-            <th>Data/Hora</th><th>Usuário</th><th>Posição</th><th>Material</th>
-            <th>Tipo</th><th>Quantidade</th><th>Observação</th><th class="actions-col">Ação</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      </div>
-      <div id="msgHistVazio" class="empty-msg" style="display:none;">Nenhuma movimentação registrada ainda.</div>
     </div>
   </div>
 
@@ -997,6 +1028,26 @@
   <div class="page" id="pageEnderecos">
     <div class="page-title">📍 Estoque / Endereços</div>
     <div class="page-subtitle">Cadastro de posições/endereços de armazenagem</div>
+
+    <div class="dashboard-enderecos-grid">
+      <div class="stat-card">
+        <div class="stat-valor" id="statPosicoesLivres">0</div>
+        <div class="stat-label">📍 Posições Livres</div>
+      </div>
+      <div class="stat-card ocupado">
+        <div class="stat-valor" id="statPosicoesOcupadas">0</div>
+        <div class="stat-label">📦 Posições Ocupadas</div>
+      </div>
+      <div class="stat-card piso">
+        <div class="stat-valor" id="statMateriaisPiso">0</div>
+        <div class="stat-label">🅿️ Materiais em Piso</div>
+      </div>
+      <div class="stat-card saturacao">
+        <div class="stat-valor" id="statMediaSaturacao">-</div>
+        <div class="stat-label">📊 Média de Saturação</div>
+      </div>
+    </div>
+
     <div class="card">
       <h2>Cadastro de Endereços (Posições)</h2>
       <div class="toolbar">
@@ -2172,7 +2223,6 @@
     { categoria: 'Estoque', chave: 'estoque', paginas: [
         { chave: 'movimentacao', label: 'Movimentação' },
         { chave: 'saldo', label: 'Saldo' },
-        { chave: 'historico', label: 'Histórico' },
         { chave: 'enderecos', label: 'Endereços' },
         { chave: 'materiais', label: 'Materiais' },
         { chave: 'verificacaoEstoque', label: 'Verificação de Solicitações' },
@@ -3002,6 +3052,57 @@
     return partes.join(' · ') || en.descricao || '';
   }
 
+  // Calcula o status "de verdade" de um endereço: BLOQUEADO é sempre manual e tem prioridade;
+  // PISO é sempre STAND BY; os demais viram OCUPADO automaticamente sempre que há saldo real
+  // de algum material naquela posição — não depende mais do campo Status ser marcado à mão.
+  function statusComputadoEndereco(en, saldoDetalhadoPreCalculado) {
+    if (en.codigo === CODIGO_ENDERECO_PISO) return 'STAND BY';
+    if (en.status === 'BLOQUEADO') return 'BLOQUEADO';
+    const saldoDet = saldoDetalhadoPreCalculado || calcularSaldoDetalhado();
+    const temEstoque = saldoDet.some(r => r.posicao === en.codigo && r.saldo > 0);
+    return temEstoque ? 'OCUPADO' : 'LIVRE';
+  }
+
+  function calcularDashboardEnderecos() {
+    const enderecosReais = enderecos.filter(en => en.codigo !== CODIGO_ENDERECO_PISO);
+    const saldoDet = calcularSaldoDetalhado();
+
+    let livres = 0, ocupadas = 0;
+    let somaSaturacao = 0, qtdComCapacidade = 0;
+
+    enderecosReais.forEach(en => {
+      const statusReal = statusComputadoEndereco(en, saldoDet);
+      if (statusReal === 'OCUPADO') ocupadas++;
+      else if (statusReal === 'LIVRE') livres++;
+
+      if (en.capacidadeKg && en.capacidadeKg > 0) {
+        const pesoAtual = saldoDet
+          .filter(r => r.posicao === en.codigo)
+          .reduce((soma, r) => {
+            const mat = materiais.find(m => m.codigo === r.codigoMaterial);
+            const pesoUnit = mat ? (mat.pesoUnitarioKg || 0) : 0;
+            return soma + Math.max(r.saldo, 0) * pesoUnit;
+          }, 0);
+        somaSaturacao += Math.min((pesoAtual / en.capacidadeKg) * 100, 100);
+        qtdComCapacidade++;
+      }
+    });
+
+    const mediaSaturacao = qtdComCapacidade > 0 ? (somaSaturacao / qtdComCapacidade) : null;
+    const materiaisEmPiso = calcularSaldoPiso().length;
+
+    return { livres, ocupadas, mediaSaturacao, materiaisEmPiso };
+  }
+
+  function renderDashboardEnderecos() {
+    const stats = calcularDashboardEnderecos();
+    document.getElementById('statPosicoesLivres').textContent = stats.livres;
+    document.getElementById('statPosicoesOcupadas').textContent = stats.ocupadas;
+    document.getElementById('statMateriaisPiso').textContent = stats.materiaisEmPiso;
+    document.getElementById('statMediaSaturacao').textContent =
+      stats.mediaSaturacao !== null ? stats.mediaSaturacao.toFixed(1) + '%' : '-';
+  }
+
   function renderEnderecos() {
     const tbody = document.querySelector('#tabelaEnderecos tbody');
     const msg = document.getElementById('msgEndVazio');
@@ -3013,7 +3114,11 @@
     }
     msg.style.display = 'none';
     document.getElementById('tabelaEnderecos').style.display = 'table';
+
+    const saldoDet = calcularSaldoDetalhado();
     enderecos.forEach(en => {
+      const statusReal = statusComputadoEndereco(en, saldoDet);
+      const classeStatus = statusReal === 'OCUPADO' ? 'neg' : (statusReal === 'LIVRE' ? 'pos' : '');
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><span class="badge">${en.codigo}</span></td>
@@ -3021,9 +3126,9 @@
         <td>${en.bloco || '-'}</td>
         <td>${en.nivel || '-'}</td>
         <td>${en.capacidadeKg ? formatarQtd(en.capacidadeKg) : '-'}</td>
-        <td>${en.status || '-'}</td>
+        <td class="${classeStatus}">${statusReal}</td>
         <td>${en.observacao || '-'}</td>
-        <td class="actions-col"><button class="btn danger" onclick="removerEndereco(${en.id})">✕</button></td>
+        <td class="actions-col"><button class="btn danger" onclick="removerEndereco('${en.id}')">✕</button></td>
       `;
       tbody.appendChild(tr);
     });
@@ -4634,17 +4739,20 @@
   }
 
   // ============== HISTÓRICO ==============
-  function renderHistorico() {
-    const tbody = document.querySelector('#tabelaHistorico tbody');
-    const msgVazio = document.getElementById('msgHistVazio');
+  // Desenha o histórico de movimentações em qualquer tabela que siga o mesmo layout —
+  // usado tanto na página Histórico quanto no card "Histórico Recente" da Movimentação.
+  function renderHistoricoEm(idTabela, idMsgVazio) {
+    const tbody = document.querySelector(`#${idTabela} tbody`);
+    const msgVazio = document.getElementById(idMsgVazio);
+    if (!tbody || !msgVazio) return;
     tbody.innerHTML = '';
     if (movimentacoes.length === 0) {
       msgVazio.style.display = 'block';
-      document.getElementById('tabelaHistorico').style.display = 'none';
+      document.getElementById(idTabela).style.display = 'none';
       return;
     }
     msgVazio.style.display = 'none';
-    document.getElementById('tabelaHistorico').style.display = 'table';
+    document.getElementById(idTabela).style.display = 'table';
 
     [...movimentacoes].reverse().forEach(m => {
       const usu = getUsuario(m.usuarioId);
@@ -4661,10 +4769,14 @@
         <td class="${tipoClass}">${tipoLabel}</td>
         <td>${m.quantidade.toLocaleString('pt-BR')}</td>
         <td>${m.observacao || '-'}</td>
-        <td class="actions-col"><button class="btn danger" onclick="removerMovimentacao(${m.id})">✕</button></td>
+        <td class="actions-col"><button class="btn danger" onclick="removerMovimentacao('${m.id}')">✕</button></td>
       `;
       tbody.appendChild(tr);
     });
+  }
+
+  function renderHistorico() {
+    renderHistoricoEm('tabelaHistoricoMovimentacao', 'msgHistMovimentacaoVazio');
   }
 
   // ============== SEQUENCIAMENTO DE PRODUÇÃO ==============
@@ -4985,6 +5097,97 @@
     container.innerHTML = `<div class="gantt-grid">${headerHtml}${corpoHtml}</div>`;
   }
 
+  // ============== TABELAS ORDENÁVEIS (clique no cabeçalho) ==============
+  // Prepara TODAS as tabelas do sistema para ordenar ao clicar no cabeçalho — sem precisar
+  // tocar em cada função de renderização individualmente. Como o <thead> de cada tabela é
+  // HTML estático (só o <tbody> é reescrito a cada render), basta preparar uma vez.
+  function tornarTabelasOrdenaveis() {
+    document.querySelectorAll('table').forEach(tabela => {
+      if (!tabela.id) return;
+      const ths = tabela.querySelectorAll('thead th');
+      ths.forEach((th, indice) => {
+        if (th.dataset.ordenavelPreparado) return; // já preparado, evita duplicar listener
+        const textoOriginal = th.textContent.trim();
+        if (!textoOriginal) return;                        // pula colunas de ícone/seta (sem texto)
+        if (th.classList.contains('actions-col')) return;   // pula a coluna de Ação
+
+        th.dataset.ordenavelPreparado = '1';
+        th.classList.add('th-ordenavel');
+        th.innerHTML = `<span class="th-texto">${textoOriginal}</span><span class="seta-ordenacao"></span>`;
+        th.addEventListener('click', () => ordenarTabelaPorColuna(tabela, indice, th));
+      });
+    });
+  }
+
+  function ordenarTabelaPorColuna(tabela, indice, thClicado) {
+    const tbody = tabela.querySelector('tbody');
+    if (!tbody) return;
+
+    const direcaoAtual = thClicado.dataset.direcao === 'asc' ? 'desc' : 'asc';
+
+    // Limpa a setinha de todas as colunas dessa tabela e marca só a que foi clicada
+    tabela.querySelectorAll('thead th').forEach(th => {
+      th.dataset.direcao = '';
+      const seta = th.querySelector('.seta-ordenacao');
+      if (seta) seta.textContent = '';
+    });
+    thClicado.dataset.direcao = direcaoAtual;
+    const setaEl = thClicado.querySelector('.seta-ordenacao');
+    if (setaEl) setaEl.textContent = direcaoAtual === 'asc' ? '▲' : '▼';
+
+    // Agrupa linhas em "blocos": linha normal + (se houver) a linha de detalhe expansível
+    // logo abaixo dela — pra elas se moverem juntas e não perder a relação de expandir/fechar.
+    const linhas = Array.from(tbody.children);
+    const blocos = [];
+    for (let i = 0; i < linhas.length; i++) {
+      const linha = linhas[i];
+      if (linha.classList.contains('linha-detalhe')) continue; // já foi anexada ao bloco anterior
+      const bloco = [linha];
+      const proxima = linhas[i + 1];
+      if (proxima && proxima.classList.contains('linha-detalhe')) {
+        bloco.push(proxima);
+        i++;
+      }
+      blocos.push(bloco);
+    }
+    if (blocos.length <= 1) return; // nada pra ordenar
+
+    function valorDoBloco(bloco) {
+      const celula = bloco[0].children[indice];
+      return celula ? celula.textContent.trim() : '';
+    }
+
+    function comparar(blocoA, blocoB) {
+      const va = valorDoBloco(blocoA);
+      const vb = valorDoBloco(blocoB);
+      if (va === '' && vb === '') return 0;
+
+      // Tenta comparar como número (aceita separador de milhar "." e decimal "," ou "%")
+      const pareceNumero = v => /^-?[\d.,]+\s*%?$/.test(v);
+      if (pareceNumero(va) && pareceNumero(vb)) {
+        const numA = parseFloat(va.replace(/\./g, '').replace(',', '.').replace('%', ''));
+        const numB = parseFloat(vb.replace(/\./g, '').replace(',', '.').replace('%', ''));
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+      }
+
+      // Tenta comparar como data dd/mm/aaaa (com ou sem hora dd/mm/aaaa[, ]hh:mm[:ss])
+      const dataRegex = /^(\d{2})\/(\d{2})\/(\d{4})(?:,?\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/;
+      const ma = va.match(dataRegex);
+      const mb = vb.match(dataRegex);
+      if (ma && mb) {
+        const da = new Date(+ma[3], +ma[2] - 1, +ma[1], +(ma[4] || 0), +(ma[5] || 0), +(ma[6] || 0));
+        const db = new Date(+mb[3], +mb[2] - 1, +mb[1], +(mb[4] || 0), +(mb[5] || 0), +(mb[6] || 0));
+        return da - db;
+      }
+
+      // Senão, ordena como texto (alfabética, respeitando acentos em pt-BR)
+      return va.localeCompare(vb, 'pt-BR', { sensitivity: 'base', numeric: true });
+    }
+
+    blocos.sort((a, b) => direcaoAtual === 'asc' ? comparar(a, b) : comparar(b, a));
+    blocos.forEach(bloco => bloco.forEach(linha => tbody.appendChild(linha)));
+  }
+
   // ============== RENDER GERAL ==============
   function renderTudo() {
     renderUsuarios();
@@ -4993,6 +5196,7 @@
     renderViagens();
     renderStatusFrota();
     renderEnderecos();
+    renderDashboardEnderecos();
     renderMateriais();
     atualizarSelects();
     renderSaldo();
@@ -5009,6 +5213,7 @@
     renderBuscaSequenciamento();
     renderGanttSequenciamento();
     atualizarBadgesSolicitacao();
+    tornarTabelasOrdenaveis();
   }
 
   carregarTudoDoSupabase().then(inicializarAutenticacao).finally(renderTudo);
