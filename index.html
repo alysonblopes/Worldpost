@@ -137,12 +137,12 @@
     gap: 10px;
     background: #e9edf2;
     border: none;
-    color: #1d4ed8;
+    color: #d9d9d9;
     padding: 11px 12px;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    border-radius: 3px;
+    border-radius: 2px;
     border-left: 3px solid transparent;
     text-align: left;
     transition: 0.15s;
@@ -639,6 +639,31 @@
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
   }
   .sidebar-usuario-logado a { color: #93c5fd; text-decoration: none; font-weight: 600; }
+
+  #cabecalhoUsuarioLogado {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 8px 4px 16px 4px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #e2e6ec;
+  }
+  .cabecalho-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #e0e7ff; color: #2563eb;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; overflow: hidden; flex-shrink: 0;
+  }
+  .cabecalho-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .cabecalho-info-usuario { display: flex; flex-direction: column; line-height: 1.25; text-align: right; }
+  .cabecalho-nome { font-size: 13.5px; font-weight: 700; color: #1f2937; }
+  .cabecalho-cargo { font-size: 11px; color: #7a8699; }
+  .cabecalho-sair {
+    font-size: 12.5px; font-weight: 600; color: #2563eb; text-decoration: none;
+    border-left: 1px solid #e2e6ec; padding-left: 10px;
+  }
+  .cabecalho-sair:hover { text-decoration: underline; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -723,6 +748,14 @@
 <main>
 <datalist id="datalistMateriais"></datalist>
 
+<div id="cabecalhoUsuarioLogado" style="display:none;">
+  <span id="cabecalhoAvatarUsuario" class="cabecalho-avatar">👤</span>
+  <div class="cabecalho-info-usuario">
+    <span id="cabecalhoNomeUsuario" class="cabecalho-nome">-</span>
+    <span id="cabecalhoCargoUsuario" class="cabecalho-cargo">-</span>
+  </div>
+  <a href="#" class="cabecalho-sair" onclick="sairDaConta(); return false;">Sair</a>
+</div>
 
   <!-- ===================== MOVIMENTAÇÃO ===================== -->
   <div class="page active" id="pageMovimentacao">
@@ -987,8 +1020,12 @@
           <input type="text" id="usuMatricula" placeholder="Ex: 00123" required>
         </div>
         <div>
-          <label>E-mail (necessário para login e redefinição de senha)</label>
+          <label>E-mail (opcional)</label>
           <input type="email" id="usuEmail" placeholder="Ex: joao@empresa.com">
+        </div>
+        <div>
+          <label>Senha</label>
+          <input type="password" id="usuSenha" placeholder="Defina a senha de acesso" minlength="4">
         </div>
         <div>
           <label>Cargo</label>
@@ -1003,8 +1040,8 @@
         </div>
       </form>
       <p class="toolbar-hint">
-        Cadastre aqui só nome, matrícula, e-mail e cargo. A pessoa cria a própria senha depois, na tela de
-        login → "Primeiro acesso", usando esse mesmo e-mail.
+        Cadastre nome, matrícula, cargo e uma senha de acesso — não usamos e-mail para autenticação, é só um
+        controle simples de usuário/senha para termos rastreabilidade de quem faz o quê no sistema.
       </p>
     </div>
     <div class="card">
@@ -1445,8 +1482,12 @@
           <input type="text" id="solNumeroPedido" placeholder="Ex: 10023" required>
         </div>
         <div>
+          <label>Cliente</label>
+          <input type="text" id="solCliente" placeholder="Ex: Plenitude" required>
+        </div>
+        <div>
           <label>Código de Material</label>
-          <select id="solCodigoMaterial" required></select>
+          <input type="text" id="solCodigoMaterial" list="datalistMateriais" placeholder="Digite ou selecione o código..." required>
         </div>
         <div>
           <label>Descrição</label>
@@ -1457,8 +1498,16 @@
           <input type="number" id="solQuantidadeSolicitada" min="0.01" step="any" placeholder="Ex: 50" required>
         </div>
         <div>
+          <label>Unid. Med.</label>
+          <input type="text" id="solUnidadeMedida" placeholder="Ex: UN, KG, PCT">
+        </div>
+        <div>
           <label>Data de Solicitação</label>
           <input type="date" id="solDataSolicitacao" required>
+        </div>
+        <div>
+          <label>Solicitante</label>
+          <input type="text" id="solSolicitante" placeholder="Nome de quem está solicitando">
         </div>
         <div>
           <label>Status</label>
@@ -1482,6 +1531,7 @@
       <table id="tabelaSolicitacoes">
         <thead>
           <tr>
+            <th style="width:34px;">Sel.</th>
             <th>N° Pedido</th>
             <th>Código</th>
             <th>Descrição</th>
@@ -1609,52 +1659,19 @@
   <div class="auth-card">
     <div class="auth-logo">📦 Sistema WMS</div>
 
-    <!-- Login -->
+    <!-- Login simples: usuário cadastrado + senha própria do sistema (não usa e-mail/Supabase Auth) -->
     <form id="formLogin" class="auth-form">
       <h2>Entrar</h2>
-      <label>E-mail</label>
-      <input type="email" id="loginEmail" required autocomplete="username">
+      <p class="auth-hint">Selecione seu nome e digite a senha definida por um administrador.</p>
+      <label>Usuário</label>
+      <select id="loginUsuarioId" required>
+        <option value="">Selecione seu nome...</option>
+      </select>
       <label>Senha</label>
       <input type="password" id="loginSenha" required autocomplete="current-password">
       <button type="submit" class="btn" style="width:100%;">Entrar</button>
       <p id="erroLogin" class="auth-erro" style="display:none;"></p>
-      <div class="auth-links">
-        <a href="#" onclick="mostrarTelaAuth('esqueci'); return false;">Esqueci minha senha</a>
-        <a href="#" onclick="mostrarTelaAuth('primeiroAcesso'); return false;">Primeiro acesso / criar senha</a>
-      </div>
-    </form>
-
-    <!-- Primeiro acesso (define a senha pela primeira vez, a partir de um e-mail já cadastrado) -->
-    <form id="formPrimeiroAcesso" class="auth-form" style="display:none;">
-      <h2>Primeiro Acesso</h2>
-      <p class="auth-hint">Seu e-mail precisa já estar cadastrado por um administrador em Configurações → Usuários.</p>
-      <label>E-mail cadastrado</label>
-      <input type="email" id="primeiroAcessoEmail" required autocomplete="username">
-      <label>Crie uma senha</label>
-      <input type="password" id="primeiroAcessoSenha" required minlength="6" autocomplete="new-password">
-      <button type="submit" class="btn" style="width:100%;">Criar senha e entrar</button>
-      <p id="erroPrimeiroAcesso" class="auth-erro" style="display:none;"></p>
-      <div class="auth-links"><a href="#" onclick="mostrarTelaAuth('login'); return false;">Voltar para o login</a></div>
-    </form>
-
-    <!-- Esqueci minha senha -->
-    <form id="formEsqueciSenha" class="auth-form" style="display:none;">
-      <h2>Redefinir Senha</h2>
-      <p class="auth-hint">Enviaremos um link de redefinição para o seu e-mail cadastrado.</p>
-      <label>E-mail</label>
-      <input type="email" id="esqueciEmail" required autocomplete="username">
-      <button type="submit" class="btn" style="width:100%;">Enviar e-mail de redefinição</button>
-      <p id="msgEsqueciSenha" class="auth-hint" style="display:none;"></p>
-      <div class="auth-links"><a href="#" onclick="mostrarTelaAuth('login'); return false;">Voltar para o login</a></div>
-    </form>
-
-    <!-- Definir nova senha (chega aqui pelo link do e-mail) -->
-    <form id="formNovaSenha" class="auth-form" style="display:none;">
-      <h2>Defina sua Nova Senha</h2>
-      <label>Nova senha</label>
-      <input type="password" id="novaSenhaInput" required minlength="6" autocomplete="new-password">
-      <button type="submit" class="btn" style="width:100%;">Salvar nova senha</button>
-      <p id="erroNovaSenha" class="auth-erro" style="display:none;"></p>
+      <p class="auth-hint">Ainda não tem senha, ou esqueceu? Peça para um administrador definir uma nova em Configurações → Usuários.</p>
     </form>
   </div>
 </div>
@@ -1688,8 +1705,15 @@
       <p id="msgPerfilRestrito" class="auth-hint" style="display:none;"></p>
     </form>
 
-    <div class="auth-links" style="justify-content:space-between; display:flex;">
-      <a href="#" onclick="solicitarRedefinicaoSenhaPerfil(); return false;">Redefinir minha senha</a>
+    <!-- Trocar a própria senha, sem precisar de e-mail -->
+    <form id="formTrocarSenhaPerfil" class="auth-form" style="margin-top:6px; border-top:1px solid #eee; padding-top:14px;">
+      <label>Nova senha</label>
+      <input type="password" id="perfilNovaSenha" minlength="4" placeholder="Deixe em branco para não alterar">
+      <button type="submit" class="btn" style="width:100%; background:#475569;">Alterar minha senha</button>
+      <p id="msgTrocarSenhaPerfil" class="auth-hint" style="display:none;"></p>
+    </form>
+
+    <div class="auth-links">
       <a href="#" onclick="sairDaConta(); return false;">Sair</a>
     </div>
   </div>
@@ -1722,7 +1746,7 @@
 
   // Mude para "false" se não quiser exigir login, mesmo com usuários cadastrados —
   // o sistema libera acesso direto para todo mundo, como antes de existir a tela de login.
-  const EXIGIR_LOGIN = false; // congelado por enquanto — mude para "true" quando quiser retomar o login
+  const EXIGIR_LOGIN = true;
 
   let supabaseConfigurado = !SUPABASE_URL.includes('COLE_AQUI') && !SUPABASE_ANON_KEY.includes('COLE_AQUI');
   let supabaseClient = null;
@@ -1751,7 +1775,7 @@
   // Mantido explícito (em vez de conversão automática) para evitar ambiguidade
   // em siglas como "OP", "NF", "kg" dentro dos nomes de campo.
   const MAPA_CAMPOS = {
-    usuarios: { matricula: 'matricula', nome: 'nome', cargo: 'cargo', permissoes: 'permissoes', email: 'email', fotoUrl: 'foto_url', authUserId: 'auth_user_id' },
+    usuarios: { matricula: 'matricula', nome: 'nome', cargo: 'cargo', permissoes: 'permissoes', email: 'email', fotoUrl: 'foto_url', authUserId: 'auth_user_id', senhaHash: 'senha_hash' },
     enderecos: { codigo: 'codigo', rua: 'rua', bloco: 'bloco', nivel: 'nivel', capacidadeKg: 'capacidade_kg', status: 'status', observacao: 'observacao', descricao: 'descricao' },
     materiais: {
       codigo: 'codigo', descricao: 'descricao', pesoUnitarioKg: 'peso_unitario_kg', familia: 'familia', unidade: 'unidade',
@@ -1760,8 +1784,8 @@
       fracaoPct: 'fracao_pct', totalPct: 'total_pct', qtdTotalPc: 'qtd_total_pc'
     },
     movimentacoes: { dataHora: 'data_hora', usuarioId: 'usuario_id', enderecoId: 'endereco_id', materialId: 'material_id', tipo: 'tipo', quantidade: 'quantidade', observacao: 'observacao' },
-    solicitacoes_verificacao: { numeroPedido: 'numero_pedido', materialId: 'material_id', quantidadeSolicitada: 'quantidade_solicitada', quantidadeDisponivel: 'quantidade_disponivel', dataSolicitacao: 'data_solicitacao', status: 'status', producaoGerada: 'producao_gerada' },
-    fila_solicitacoes: { numeroPedido: 'numero_pedido', materialId: 'material_id', quantidadeSolicitada: 'quantidade_solicitada', dataEntradaFila: 'data_entrada_fila', status: 'status' },
+    solicitacoes_verificacao: { numeroPedido: 'numero_pedido', cliente: 'cliente', materialId: 'material_id', quantidadeSolicitada: 'quantidade_solicitada', unidadeMedida: 'unidade_medida', quantidadeDisponivel: 'quantidade_disponivel', dataSolicitacao: 'data_solicitacao', solicitante: 'solicitante', status: 'status', producaoGerada: 'producao_gerada' },
+    fila_solicitacoes: { numeroPedido: 'numero_pedido', cliente: 'cliente', materialId: 'material_id', quantidadeSolicitada: 'quantidade_solicitada', unidadeMedida: 'unidade_medida', solicitante: 'solicitante', dataEntradaFila: 'data_entrada_fila', status: 'status' },
     producoes: { numeroPedidoRef: 'numero_pedido_ref', materialId: 'material_id', quantidadeSolicitada: 'quantidade_solicitada', quantidadeDisponivel: 'quantidade_disponivel', quantidadeProduzir: 'quantidade_produzir', qtdDaOP: 'qtd_da_op', dataGeracao: 'data_geracao', status: 'status', producaoGerada: 'producao_gerada' },
     apontamentos_producao: {
       producaoId: 'producao_id', dataHora: 'data_hora', maquina: 'maquina', statusMaquina: 'status_maquina', numeroOP: 'numero_op',
@@ -1856,16 +1880,29 @@
     }
   }
 
-  // ============== AUTENTICAÇÃO ==============
-  let usuarioLogado = null; // linha de "usuarios" correspondente à sessão logada no Supabase Auth
+  // ============== AUTENTICAÇÃO (simples: usuário/senha próprios, só para rastreabilidade) ==============
+  let usuarioLogado = null; // linha de "usuarios" correspondente a quem está logado
   let perfilFotoBase64Temp = null;
 
-  function mostrarTelaAuth(tela) {
-    ['formLogin', 'formPrimeiroAcesso', 'formEsqueciSenha', 'formNovaSenha'].forEach(id => {
-      document.getElementById(id).style.display = 'none';
-    });
-    const mapa = { login: 'formLogin', primeiroAcesso: 'formPrimeiroAcesso', esqueci: 'formEsqueciSenha', novaSenha: 'formNovaSenha' };
-    document.getElementById(mapa[tela]).style.display = 'block';
+  // Hash simples (SHA-256) da senha — evita guardar a senha em texto puro no banco.
+  // Não é um sistema de autenticação de alta segurança: o objetivo aqui é rastreabilidade
+  // (saber quem fez o quê), não proteção contra ataques sofisticados.
+  async function hashSenha(senha) {
+    const bytes = new TextEncoder().encode(senha);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function atualizarCabecalhoUsuarioLogado() {
+    const cabecalho = document.getElementById('cabecalhoUsuarioLogado');
+    if (!usuarioLogado) { cabecalho.style.display = 'none'; return; }
+    cabecalho.style.display = 'flex';
+    document.getElementById('cabecalhoNomeUsuario').textContent = usuarioLogado.nome;
+    document.getElementById('cabecalhoCargoUsuario').textContent = usuarioLogado.cargo || 'Usuário';
+    const avatarEl = document.getElementById('cabecalhoAvatarUsuario');
+    avatarEl.innerHTML = usuarioLogado.fotoUrl
+      ? `<img src="${usuarioLogado.fotoUrl}" alt="Foto">`
+      : '👤';
   }
 
   function atualizarRodapeUsuarioLogado() {
@@ -1884,13 +1921,17 @@
     document.getElementById('telaPerfilRestrito').style.display = 'none';
     document.getElementById('wrapperAppPrincipal').style.display = 'block';
     atualizarRodapeUsuarioLogado();
+    atualizarCabecalhoUsuarioLogado();
   }
 
   function mostrarLogin() {
     document.getElementById('wrapperAppPrincipal').style.display = 'none';
     document.getElementById('telaPerfilRestrito').style.display = 'none';
     document.getElementById('telaLogin').style.display = 'flex';
-    mostrarTelaAuth('login');
+
+    const select = document.getElementById('loginUsuarioId');
+    select.innerHTML = '<option value="">Selecione seu nome...</option>' +
+      usuarios.map(u => `<option value="${u.id}">${u.nome} (${u.matricula})</option>`).join('');
   }
 
   function mostrarPerfilRestrito() {
@@ -1907,27 +1948,8 @@
     }
   }
 
-  async function entrarComSessao(session) {
-    const email = session.user.email;
-    let usuario = usuarios.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
-
-    if (!usuario) {
-      const erroEl = document.getElementById('erroLogin');
-      erroEl.textContent = 'Seu login funcionou, mas esse e-mail não está cadastrado como usuário do sistema. Peça para um administrador te cadastrar em Configurações → Usuários.';
-      erroEl.style.display = 'block';
-      await supabaseClient.auth.signOut();
-      mostrarLogin();
-      return;
-    }
-
-    // Vincula o auth_user_id na primeira vez que reconhecemos esse e-mail
-    if (!usuario.authUserId) {
-      usuario.authUserId = session.user.id;
-      supaAtualizar('usuarios', usuario.id, { authUserId: session.user.id });
-    }
-
+  function entrarComUsuario(usuario) {
     usuarioLogado = usuario;
-
     if (usuario.cargo === 'Administrador') {
       mostrarApp();
     } else {
@@ -1936,154 +1958,63 @@
   }
 
   async function inicializarAutenticacao() {
-    // Sem Supabase configurado, sem usuários cadastrados, ou login desligado no interruptor: acesso direto
-    if (!supabaseConfigurado || usuarios.length === 0 || !EXIGIR_LOGIN) {
+    // Sem usuários cadastrados, ou login desligado no interruptor: acesso direto
+    if (usuarios.length === 0 || !EXIGIR_LOGIN) {
       mostrarApp();
       return;
     }
-
-    // Detecta quando chegamos aqui pelo link de redefinição de senha do e-mail
-    supabaseClient.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        document.getElementById('wrapperAppPrincipal').style.display = 'none';
-        document.getElementById('telaPerfilRestrito').style.display = 'none';
-        document.getElementById('telaLogin').style.display = 'flex';
-        mostrarTelaAuth('novaSenha');
-      }
-    });
-
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) {
-      mostrarLogin();
-      return;
-    }
-    await entrarComSessao(session);
+    mostrarLogin();
   }
 
   document.getElementById('formLogin').addEventListener('submit', async e => {
     e.preventDefault();
-    const email = document.getElementById('loginEmail').value.trim();
+    const usuarioId = document.getElementById('loginUsuarioId').value;
     const senha = document.getElementById('loginSenha').value;
     const erroEl = document.getElementById('erroLogin');
     erroEl.style.display = 'none';
 
-    try {
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
-      if (error) {
-        console.error('Erro de autenticação (login):', error);
-        erroEl.textContent = 'E-mail ou senha inválidos.';
-        erroEl.style.display = 'block';
-        return;
-      }
-      await entrarComSessao(data.session);
-    } catch (err) {
-      erroEl.textContent = mensagemDeErroAuth(err, 'login - falha inesperada');
+    const usuario = usuarios.find(u => String(u.id) === String(usuarioId));
+    if (!usuario) {
+      erroEl.textContent = 'Selecione um usuário.';
       erroEl.style.display = 'block';
+      return;
     }
-  });
-
-  // Extrai uma mensagem de erro segura para mostrar na tela, sempre logando o erro
-  // bruto no console (F12) para diagnóstico — nunca deixa aparecer "{}" ou similar.
-  function mensagemDeErroAuth(error, contexto) {
-    console.error(`Erro de autenticação (${contexto}):`, error);
-    if (error && typeof error.message === 'string' && error.message.trim()) return error.message;
-    if (typeof error === 'string' && error.trim()) return error;
-    return 'Não foi possível completar essa ação agora. Veja o Console (F12) para detalhes técnicos.';
-  }
-
-  document.getElementById('formPrimeiroAcesso').addEventListener('submit', async e => {
-    e.preventDefault();
-    const email = document.getElementById('primeiroAcessoEmail').value.trim().toLowerCase();
-    const senha = document.getElementById('primeiroAcessoSenha').value;
-    const erroEl = document.getElementById('erroPrimeiroAcesso');
-    erroEl.style.display = 'none';
-
-    const usuarioExistente = usuarios.find(u => u.email && u.email.toLowerCase() === email);
-    if (!usuarioExistente) {
-      erroEl.textContent = 'Esse e-mail ainda não foi cadastrado por um administrador em Configurações → Usuários.';
+    if (!usuario.senhaHash) {
+      erroEl.textContent = 'Esse usuário ainda não tem senha definida. Peça para um administrador definir uma em Configurações → Usuários.';
       erroEl.style.display = 'block';
       return;
     }
 
-    try {
-      const { data, error } = await supabaseClient.auth.signUp({ email, password: senha });
-      if (error) {
-        const msg = mensagemDeErroAuth(error, 'primeiro acesso');
-        erroEl.textContent = msg.toLowerCase().includes('already registered')
-          ? 'Esse e-mail já tem senha criada — use "Entrar" ou "Esqueci minha senha".'
-          : msg;
-        erroEl.style.display = 'block';
-        return;
-      }
-
-      if (data.session) {
-        await entrarComSessao(data.session);
-      } else {
-        alert('Conta criada! Se a confirmação de e-mail estiver habilitada no projeto, verifique sua caixa de entrada antes de entrar.');
-        mostrarTelaAuth('login');
-      }
-    } catch (err) {
-      erroEl.textContent = mensagemDeErroAuth(err, 'primeiro acesso - falha inesperada');
+    const hashDigitado = await hashSenha(senha);
+    if (hashDigitado !== usuario.senhaHash) {
+      erroEl.textContent = 'Senha incorreta.';
       erroEl.style.display = 'block';
+      return;
     }
-  });
 
-  document.getElementById('formEsqueciSenha').addEventListener('submit', async e => {
-    e.preventDefault();
-    const email = document.getElementById('esqueciEmail').value.trim();
-    const msgEl = document.getElementById('msgEsqueciSenha');
-    try {
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.href.split('#')[0].split('?')[0]
-      });
-      msgEl.style.display = 'block';
-      msgEl.textContent = error
-        ? mensagemDeErroAuth(error, 'esqueci senha')
-        : 'Se esse e-mail estiver cadastrado, um link de redefinição foi enviado. Confira sua caixa de entrada.';
-    } catch (err) {
-      msgEl.style.display = 'block';
-      msgEl.textContent = mensagemDeErroAuth(err, 'esqueci senha - falha inesperada');
-    }
-  });
-
-  document.getElementById('formNovaSenha').addEventListener('submit', async e => {
-    e.preventDefault();
-    const novaSenha = document.getElementById('novaSenhaInput').value;
-    const erroEl = document.getElementById('erroNovaSenha');
-    erroEl.style.display = 'none';
-
-    try {
-      const { error } = await supabaseClient.auth.updateUser({ password: novaSenha });
-      if (error) {
-        erroEl.textContent = mensagemDeErroAuth(error, 'nova senha');
-        erroEl.style.display = 'block';
-        return;
-      }
-      alert('Senha redefinida com sucesso!');
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      await entrarComSessao(session);
-    } catch (err) {
-      erroEl.textContent = mensagemDeErroAuth(err, 'nova senha - falha inesperada');
-      erroEl.style.display = 'block';
-    }
+    document.getElementById('formLogin').reset();
+    entrarComUsuario(usuario);
   });
 
   async function sairDaConta() {
-    if (supabaseConfigurado) await supabaseClient.auth.signOut();
     usuarioLogado = null;
     location.reload();
   }
 
-  function solicitarRedefinicaoSenhaPerfil() {
-    if (!usuarioLogado || !usuarioLogado.email) {
-      alert('Seu cadastro não tem e-mail — peça para um administrador adicionar um e-mail antes de redefinir a senha.');
+  // Usado pelo administrador em Configurações → Usuários para definir/redefinir a senha de qualquer um
+  async function definirNovaSenhaUsuario(usuarioId) {
+    const usuario = usuarios.find(u => String(u.id) === String(usuarioId));
+    if (!usuario) return;
+    const novaSenha = prompt(`Nova senha para ${usuario.nome}:`);
+    if (!novaSenha) return;
+    if (novaSenha.length < 4) {
+      alert('A senha precisa ter pelo menos 4 caracteres.');
       return;
     }
-    supabaseClient.auth.resetPasswordForEmail(usuarioLogado.email, {
-      redirectTo: window.location.href.split('#')[0].split('?')[0]
-    }).then(({ error }) => {
-      alert(error ? 'Não foi possível enviar o e-mail agora.' : `Link de redefinição enviado para ${usuarioLogado.email}. Confira sua caixa de entrada.`);
-    });
+    usuario.senhaHash = await hashSenha(novaSenha);
+    await supaAtualizar('usuarios', usuario.id, { senhaHash: usuario.senhaHash });
+    alert(`Senha de ${usuario.nome} atualizada!`);
+    renderTudo();
   }
 
   function preverFotoPerfil(event) {
@@ -2113,6 +2044,30 @@
 
     await supaAtualizar('usuarios', usuarioLogado.id, campos);
     msgEl.textContent = 'Perfil salvo!';
+    msgEl.style.display = 'block';
+    setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
+  });
+
+  // Trocar a própria senha, direto no perfil — sem precisar de e-mail
+  document.getElementById('formTrocarSenhaPerfil').addEventListener('submit', async e => {
+    e.preventDefault();
+    const novaSenha = document.getElementById('perfilNovaSenha').value;
+    const msgEl = document.getElementById('msgTrocarSenhaPerfil');
+    if (!usuarioLogado) return;
+    if (!novaSenha) {
+      msgEl.textContent = 'Digite uma nova senha para alterar.';
+      msgEl.style.display = 'block';
+      return;
+    }
+    if (novaSenha.length < 4) {
+      msgEl.textContent = 'A senha precisa ter pelo menos 4 caracteres.';
+      msgEl.style.display = 'block';
+      return;
+    }
+    usuarioLogado.senhaHash = await hashSenha(novaSenha);
+    await supaAtualizar('usuarios', usuarioLogado.id, { senhaHash: usuarioLogado.senhaHash });
+    document.getElementById('perfilNovaSenha').value = '';
+    msgEl.textContent = 'Senha alterada!';
     msgEl.style.display = 'block';
     setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
   });
@@ -2276,11 +2231,12 @@
   }
 
   const formUsuario = document.getElementById('formUsuario');
-  formUsuario.addEventListener('submit', e => {
+  formUsuario.addEventListener('submit', async e => {
     e.preventDefault();
     const nome = document.getElementById('usuNome').value.trim();
     const matricula = document.getElementById('usuMatricula').value.trim();
     const email = document.getElementById('usuEmail').value.trim().toLowerCase();
+    const senha = document.getElementById('usuSenha').value;
     const cargo = document.getElementById('usuCargo').value;
     if (!nome || !matricula) return;
     const novoUsuario = {
@@ -2288,6 +2244,7 @@
       nome,
       matricula,
       email: email || null,
+      senhaHash: senha ? await hashSenha(senha) : null,
       fotoUrl: null,
       cargo,
       permissoes: gerarPermissoesPadrao(cargo)
@@ -2413,6 +2370,8 @@
                 <option value="Usuário" ${u.cargo === 'Usuário' ? 'selected' : ''}>Usuário</option>
                 <option value="Consultor" ${u.cargo === 'Consultor' ? 'selected' : ''}>Consultor</option>
               </select>
+              <button type="button" class="btn" style="background:#475569;" onclick="definirNovaSenhaUsuario('${u.id}')">🔑 Definir Nova Senha</button>
+              <span style="font-size:12px; color:${u.senhaHash ? '#157a3d' : '#c0392b'};">${u.senhaHash ? '✔ Senha definida' : '⚠ Sem senha ainda'}</span>
             </div>
             <p class="toolbar-hint">Marque os módulos que ${u.nome.split(' ')[0]} pode acessar. Isso serve como referência — a aplicação real das permissões será feita via políticas de RLS no Supabase.</p>
             <div class="permissoes-wrap">${blocosCategorias}</div>
@@ -3194,13 +3153,11 @@
     const selUsu = document.getElementById('movUsuario');
     const selEnd = document.getElementById('movEndereco');
     const selMat = document.getElementById('movMaterial');
-    const selSolMat = document.getElementById('solCodigoMaterial');
     const selSolMatMaterial = document.getElementById('solMatCodigoMaterial');
 
     selUsu.innerHTML = usuarios.map(u => `<option value="${u.id}">${u.matricula} - ${u.nome}</option>`).join('');
     selEnd.innerHTML = enderecos.map(en => `<option value="${en.id}">${en.codigo}${labelEndereco(en) ? ' - ' + labelEndereco(en) : ''}</option>`).join('');
     selMat.innerHTML = materiais.map(m => `<option value="${m.id}">${m.codigo} - ${m.descricao}</option>`).join('');
-    selSolMat.innerHTML = materiais.map(m => `<option value="${m.id}">${m.codigo}</option>`).join('');
     selSolMatMaterial.innerHTML = '<option value="">Selecione...</option>' + materiais.map(m => `<option value="${m.id}">${m.codigo}</option>`).join('');
 
     const aviso = document.getElementById('avisoCadastros');
@@ -3237,9 +3194,9 @@
   }
 
   function atualizarDescricaoSolicitacao() {
-    const selSolMat = document.getElementById('solCodigoMaterial');
+    const inputSolMat = document.getElementById('solCodigoMaterial');
     const descInput = document.getElementById('solDescricao');
-    const mat = getMaterial(selSolMat.value);
+    const mat = materiais.find(m => m.codigo === inputSolMat.value.trim().toUpperCase());
     descInput.value = mat ? mat.descricao : '';
   }
 
@@ -3310,16 +3267,26 @@
   }
   preencherDataHoje();
 
+  solCodigoMaterialSelect.addEventListener('input', atualizarDescricaoSolicitacao);
   solCodigoMaterialSelect.addEventListener('change', atualizarDescricaoSolicitacao);
 
   formSolicitacao.addEventListener('submit', e => {
     e.preventDefault();
     const numeroPedido = document.getElementById('solNumeroPedido').value.trim();
-    const materialId = solCodigoMaterialSelect.value;
+    const cliente = document.getElementById('solCliente').value.trim();
+    const codigoDigitado = solCodigoMaterialSelect.value.trim().toUpperCase();
+    const materialEncontrado = materiais.find(m => m.codigo === codigoDigitado);
     const quantidadeSolicitada = parseFloat(document.getElementById('solQuantidadeSolicitada').value);
+    const unidadeMedida = document.getElementById('solUnidadeMedida').value.trim();
     const dataSolicitacao = solDataInput.value;
+    const solicitante = document.getElementById('solSolicitante').value.trim();
 
-    if (!numeroPedido || !materialId || !dataSolicitacao || isNaN(quantidadeSolicitada) || quantidadeSolicitada <= 0) return;
+    if (!numeroPedido || !dataSolicitacao || isNaN(quantidadeSolicitada) || quantidadeSolicitada <= 0) return;
+    if (!materialEncontrado) {
+      alert('Código de Material não encontrado. Digite ou selecione um código já cadastrado em Estoque → Materiais.');
+      return;
+    }
+    const materialId = materialEncontrado.id;
 
     const totalAbertas = solicitacoes.filter(s => s.status === 'Aberta').length;
 
@@ -3328,8 +3295,11 @@
       const novaFila = {
         id: crypto.randomUUID(),
         numeroPedido,
+        cliente,
         materialId,
         quantidadeSolicitada,
+        unidadeMedida,
+        solicitante,
         dataEntradaFila: new Date().toISOString(),
         status: 'Em fila'
       };
@@ -3351,10 +3321,13 @@
     const novaSolicitacao = {
       id: crypto.randomUUID(),
       numeroPedido,
+      cliente,
       materialId,
       quantidadeSolicitada,
+      unidadeMedida,
       quantidadeDisponivel: null,
       dataSolicitacao,
+      solicitante,
       status: 'Aberta'
     };
     solicitacoes.push(novaSolicitacao);
@@ -3373,10 +3346,13 @@
       const novaSolicitacao = {
         id: proxima.id,
         numeroPedido: proxima.numeroPedido,
+        cliente: proxima.cliente,
         materialId: proxima.materialId,
         quantidadeSolicitada: proxima.quantidadeSolicitada,
+        unidadeMedida: proxima.unidadeMedida,
         quantidadeDisponivel: null,
         dataSolicitacao: new Date().toISOString().slice(0, 10),
+        solicitante: proxima.solicitante,
         status: 'Aberta'
       };
       solicitacoes.push(novaSolicitacao);
@@ -3459,6 +3435,7 @@
       const mat = getMaterial(s.materialId);
       const tr = document.createElement('tr');
       tr.innerHTML = `
+        <td style="text-align:center;"><input type="checkbox" id="chkSol_${s.id}" onchange="alternarSelecaoSolicitacao('${s.id}')"></td>
         <td>${s.numeroPedido}</td>
         <td><span class="badge">${mat ? mat.codigo : '(removido)'}</span></td>
         <td>${mat ? mat.descricao : '-'}</td>
@@ -3466,12 +3443,19 @@
         <td>${formatarDataBR(s.dataSolicitacao)}</td>
         <td>${s.status}</td>
         <td class="actions-col">
-          <button class="btn" style="display:block; width:100%; padding:6px 8px; font-size:12px; margin-bottom:4px;" onclick="gerarPDFSolicitacao('${s.id}')">📄 PDF</button>
+          <button class="btn" id="btnPdfSol_${s.id}" style="display:block; width:100%; padding:6px 8px; font-size:12px; margin-bottom:4px;" onclick="gerarPDFSolicitacao('${s.id}')" disabled>📄 PDF</button>
           <button class="btn danger" style="display:block; width:100%; padding:6px 8px; font-size:12px;" onclick="removerSolicitacao('${s.id}')">✕</button>
         </td>
       `;
       tbody.appendChild(tr);
     });
+  }
+
+  // O botão de gerar PDF só fica disponível depois de marcar a caixa de seleção da linha
+  function alternarSelecaoSolicitacao(id) {
+    const chk = document.getElementById('chkSol_' + id);
+    const btn = document.getElementById('btnPdfSol_' + id);
+    if (chk && btn) btn.disabled = !chk.checked;
   }
 
   // ---- Badges de notificação e contador de limite diário ----
@@ -4008,42 +3992,190 @@
     const mat = getMaterial(s.materialId);
 
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const doc = new jsPDF(); // A4, mm
+    const margemEsq = 12, margemDir = 198, larguraUtil = margemDir - margemEsq;
+    let y = 14;
 
-    doc.setFillColor(31, 58, 95);
-    doc.rect(0, 0, 210, 25, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
-    doc.text('Solicitação de Verificação de Estoque', 105, 15, { align: 'center' });
+    // Moldura externa do documento inteiro
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.4);
+    doc.rect(margemEsq - 2, y - 6, larguraUtil + 4, 268);
 
-    doc.setTextColor(30, 30, 30);
-    doc.setFontSize(11);
+    // Título
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(15);
+    doc.setFont(undefined, 'bold');
+    doc.text('Solicitação de Verificação de Estoque', margemEsq, y);
+    y += 6;
+    doc.setLineWidth(0.3);
+    doc.line(margemEsq - 2, y, margemEsq + larguraUtil + 2, y);
+    y += 6;
 
-    let y = 42;
-    const linha = (rotulo, valor) => {
+    // ---- Barra cinza de seção ----
+    function barraSecao(titulo) {
+      doc.setFillColor(150, 150, 150);
+      doc.rect(margemEsq - 2, y - 4, larguraUtil + 4, 6, 'F');
+      doc.setTextColor(0, 0, 0);
       doc.setFont(undefined, 'bold');
-      doc.text(rotulo, 20, y);
+      doc.setFontSize(10);
+      doc.text(titulo, margemEsq + larguraUtil / 2, y, { align: 'center' });
+      y += 7;
+    }
+
+    // ---- Campo com valor preenchido digitalmente (o que já sabemos) ----
+    function campoPreenchido(rotulo, valor, x, larguraRotulo) {
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(8.5);
+      doc.text(rotulo, x, y);
       doc.setFont(undefined, 'normal');
-      doc.text(String(valor || '-'), 75, y);
-      y += 12;
-    };
+      doc.text(String(valor || '-'), x + larguraRotulo, y);
+    }
 
-    linha('N° Pedido:', s.numeroPedido);
-    linha('Código de Material:', mat ? mat.codigo : '(removido)');
-    linha('Descrição:', mat ? mat.descricao : '(removido)');
-    linha('Quantidade Solicitada:', formatarQtd(s.quantidadeSolicitada));
-    linha('Quantidade Disponível:', formatarQtd(s.quantidadeDisponivel));
-    linha('Data de Solicitação:', formatarDataBR(s.dataSolicitacao));
-    linha('Status:', s.status);
+    // ---- Campo em branco (para preenchimento manual/posterior por outro setor) ----
+    function campoEmBranco(rotulo, x, larguraLinha) {
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(8.5);
+      doc.text(rotulo, x, y);
+      const inicioLinha = x + doc.getTextWidth(rotulo) + 2;
+      doc.setLineWidth(0.2);
+      doc.line(inicioLinha, y + 0.5, inicioLinha + larguraLinha, y + 0.5);
+    }
 
-    doc.setDrawColor(200, 200, 200);
-    doc.line(20, y, 190, y);
-    y += 10;
-    doc.setFontSize(9);
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Documento gerado em ${new Date().toLocaleString('pt-BR')}`, 20, y);
+    function quadradoCheckbox(x) {
+      doc.rect(x, y - 3.2, 3.2, 3.2);
+    }
 
-    doc.save(`solicitacao_pedido_${s.numeroPedido}.pdf`);
+    function proximaLinha(altura) { y += altura || 7; }
+
+    doc.setTextColor(0, 0, 0);
+
+    // ===== Seção 1: Informações do Cliente/Produto (Uso exclusivo do Comercial) =====
+    barraSecao('Informações do Cliente/Produto (Uso exclusivo do Comercial)');
+    campoPreenchido('CLIENTE:', s.cliente, margemEsq, 18);
+    campoPreenchido('Nº PEDIDO/COTAÇÃO:', s.numeroPedido, margemEsq + 90, 34);
+    proximaLinha();
+    campoPreenchido('CÓD. PROD.', mat ? mat.codigo : '(removido)', margemEsq, 18);
+    campoPreenchido('QUANTIDADE OP:', formatarQtd(s.quantidadeSolicitada), margemEsq + 90, 30);
+    campoPreenchido('UNID. MED.:', s.unidadeMedida, margemEsq + 150, 20);
+    proximaLinha();
+    campoPreenchido('DESCRIÇÃO DO PRODUTO:', mat ? mat.descricao : '(removido)', margemEsq, 40);
+    proximaLinha(9);
+    campoPreenchido('Data:', formatarDataBR(s.dataSolicitacao), margemEsq, 12);
+    campoPreenchido('Horário:', new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), margemEsq + 45, 16);
+    campoPreenchido('ASSINATURA:', s.solicitante, margemEsq + 90, 22);
+    proximaLinha(9);
+
+    // ===== Seção 2: Verificação de produto acabado (Uso exclusivo do Estoque) =====
+    barraSecao('Verificação de produto acabado (Uso exclusivo do Estoque)');
+    quadradoCheckbox(margemEsq + 38);
+    doc.setFont(undefined, 'bold'); doc.setFontSize(8.5);
+    doc.text('PRODUTO SEMI-ACABADO', margemEsq, y);
+    campoEmBranco('QTD.:', margemEsq + 46, 16);
+    campoEmBranco('Nº OP', margemEsq + 72, 16);
+    campoEmBranco('DATA FABR:', margemEsq + 100, 20);
+    proximaLinha(8);
+    quadradoCheckbox(margemEsq + 38);
+    doc.setFont(undefined, 'bold'); doc.setFontSize(8.5);
+    doc.text('PRODUTO EXPEDIÇÃO', margemEsq, y);
+    campoEmBranco('QTD.:', margemEsq + 46, 16);
+    campoEmBranco('Nº OP', margemEsq + 72, 16);
+    campoEmBranco('DATA FABR:', margemEsq + 100, 20);
+    proximaLinha(8);
+    quadradoCheckbox(margemEsq + 38);
+    doc.setFont(undefined, 'bold'); doc.setFontSize(8.5);
+    doc.text('PRODUTO MANUSEIO', margemEsq, y);
+    campoEmBranco('QTD.:', margemEsq + 46, 16);
+    campoEmBranco('Nº OP', margemEsq + 72, 16);
+    campoEmBranco('DATA FABR:', margemEsq + 100, 20);
+    proximaLinha(9);
+    doc.setFont(undefined, 'bold'); doc.setFontSize(8.5);
+    doc.text('NECESSITA DE REVISÃO?', margemEsq, y);
+    quadradoCheckbox(margemEsq + 46); doc.text('SIM', margemEsq + 50, y);
+    quadradoCheckbox(margemEsq + 60); doc.text('NÃO', margemEsq + 64, y);
+    campoEmBranco('Nome responsável:', margemEsq + 90, 40);
+    proximaLinha(6);
+    campoEmBranco('Assinatura:', margemEsq + 90, 60);
+    proximaLinha(7);
+    campoEmBranco('Data:', margemEsq, 20);
+    campoEmBranco('Horário:', margemEsq + 45, 20);
+    proximaLinha(9);
+
+    // ===== Seção 3: Reserva de produto acabado (Uso exclusivo do Comercial) =====
+    barraSecao('Reserva de produto acabado (Uso exclusivo do Comercial)');
+    campoEmBranco('DATA RESERVA:', margemEsq, 30);
+    campoEmBranco('Nº RESERVA:', margemEsq + 100, 40);
+    proximaLinha(8);
+    campoEmBranco('QUANTIDADE RESERVADA:', margemEsq, 30);
+    campoEmBranco('UNID. MED.:', margemEsq + 100, 30);
+    proximaLinha(9);
+
+    // ===== Seção 4: Informações de matéria prima (Uso exclusivo do PPCP) =====
+    barraSecao('Informações de matéria prima (Uso exclusivo do PPCP)');
+    campoEmBranco('CÓD. PRODUTO:', margemEsq, 30);
+    campoEmBranco('Nº DA OP:', margemEsq + 90, 25);
+    campoEmBranco('QTD DA OP:', margemEsq + 140, 25);
+    proximaLinha(8);
+    campoEmBranco('DESCRIÇÃO DO PRODUTO:', margemEsq, 60);
+    campoEmBranco('UNID. MED.:', margemEsq + 140, 25);
+    proximaLinha(9);
+
+    // ===== Seção 5: Verificação de matéria prima (Uso exclusivo do Estoque) =====
+    barraSecao('Verificação de matéria prima (Uso exclusivo do Estoque)');
+    doc.setFont(undefined, 'bold'); doc.setFontSize(8.5);
+    doc.text('BOBINA EXTRUSADA', margemEsq, y);
+    campoEmBranco('QTD.:', margemEsq + 42, 16);
+    campoEmBranco('UNID. MED.:', margemEsq + 68, 20);
+    campoEmBranco('LOCAL:', margemEsq + 118, 40);
+    proximaLinha(8);
+    doc.setFont(undefined, 'bold'); doc.setFontSize(8.5);
+    doc.text('BOBINA IMPRESSA', margemEsq, y);
+    campoEmBranco('QTD.:', margemEsq + 42, 16);
+    campoEmBranco('UNID. MED.:', margemEsq + 68, 20);
+    campoEmBranco('LOCAL:', margemEsq + 118, 40);
+    proximaLinha(8);
+    campoEmBranco('NOME RESPONSÁVEL:', margemEsq, 90);
+    proximaLinha(8);
+    campoEmBranco('Data:', margemEsq, 20);
+    campoEmBranco('Horário:', margemEsq + 45, 20);
+    campoEmBranco('ASSINATURA:', margemEsq + 100, 45);
+    proximaLinha(9);
+
+    // ===== Seção 6: Reserva de matéria prima (Uso exclusivo do PPCP) =====
+    barraSecao('Reserva de matéria prima (Uso exclusivo do PPCP)');
+    doc.setFont(undefined, 'bold'); doc.setFontSize(8.5);
+    doc.text('BOBINA EXTRUSADA', margemEsq, y);
+    campoEmBranco('DATA RESERVA:', margemEsq + 45, 25);
+    campoEmBranco('Nº RESERVA:', margemEsq + 120, 25);
+    proximaLinha(6);
+    campoEmBranco('QTD. RESERVADA:', margemEsq + 45, 25);
+    campoEmBranco('UNID. MED.:', margemEsq + 120, 25);
+    proximaLinha(8);
+    doc.setFont(undefined, 'bold'); doc.setFontSize(8.5);
+    doc.text('BOBINA IMPRESSA', margemEsq, y);
+    campoEmBranco('DATA RESERVA:', margemEsq + 45, 25);
+    campoEmBranco('Nº RESERVA:', margemEsq + 120, 25);
+    proximaLinha(6);
+    campoEmBranco('QTD. RESERVADA:', margemEsq + 45, 25);
+    campoEmBranco('UNID. MED.:', margemEsq + 120, 25);
+    proximaLinha(9);
+
+    // ===== Seção 7: Assinatura (Diretoria) =====
+    barraSecao('ASSINATURA ( Diretoria )');
+    proximaLinha(10);
+    doc.setLineWidth(0.2);
+    doc.line(margemEsq + 40, y, margemEsq + larguraUtil - 10, y);
+    proximaLinha(8);
+    campoEmBranco('Data:', margemEsq, 20);
+    campoEmBranco('Horário:', margemEsq + 45, 20);
+    campoEmBranco('Nome responsável:', margemEsq + 90, 45);
+
+    // Rodapé
+    doc.setFontSize(7.5);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(130, 130, 130);
+    doc.text(`Documento gerado digitalmente pelo Sistema WMS em ${new Date().toLocaleString('pt-BR')} — dados do Comercial preenchidos automaticamente; demais campos ficam em branco para preenchimento pelos setores responsáveis.`, margemEsq, 282, { maxWidth: larguraUtil });
+
+    doc.save(`solicitacao_verificacao_pedido_${s.numeroPedido}.pdf`);
   }
 
   // ============== SALDO ==============
@@ -5214,6 +5346,7 @@
     renderGanttSequenciamento();
     atualizarBadgesSolicitacao();
     tornarTabelasOrdenaveis();
+    atualizarCabecalhoUsuarioLogado();
   }
 
   carregarTudoDoSupabase().then(inicializarAutenticacao).finally(renderTudo);
