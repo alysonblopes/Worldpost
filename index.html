@@ -135,9 +135,9 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background: #e9edf2;
+    background: #f2f2f2;
     border: none;
-    color: #d9d9d9;
+    color: #1d4ed8;
     padding: 11px 12px;
     font-size: 14px;
     font-weight: 600;
@@ -1958,8 +1958,11 @@
   }
 
   async function inicializarAutenticacao() {
-    // Sem usuários cadastrados, ou login desligado no interruptor: acesso direto
-    if (usuarios.length === 0 || !EXIGIR_LOGIN) {
+    // Sem usuários cadastrados, login desligado no interruptor, ou NINGUÉM tem senha
+    // definida ainda (evita travar todo mundo pra fora logo na primeira configuração):
+    // acesso direto.
+    const ninguemTemSenha = usuarios.every(u => !u.senhaHash);
+    if (usuarios.length === 0 || !EXIGIR_LOGIN || ninguemTemSenha) {
       mostrarApp();
       return;
     }
