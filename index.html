@@ -2207,6 +2207,24 @@
     return permissoes;
   }
 
+  // Preenche categorias/páginas que não existiam quando as permissões do usuário foram
+  // salvas pela última vez (ex: "Expedição" foi adicionada depois de alguns usuários já
+  // estarem cadastrados) — sem isso, acessar uma chave que não existe quebra a tela inteira
+  // e trava a renderização de tudo que vem depois dela.
+  function mesclarPermissoesComPadrao(permissoesExistentes, cargo) {
+    const padrao = gerarPermissoesPadrao(cargo);
+    const existentes = permissoesExistentes || {};
+    MODULOS_SISTEMA.forEach(cat => {
+      if (!existentes[cat.chave]) existentes[cat.chave] = {};
+      cat.paginas.forEach(p => {
+        if (existentes[cat.chave][p.chave] === undefined) {
+          existentes[cat.chave][p.chave] = padrao[cat.chave][p.chave];
+        }
+      });
+    });
+    return existentes;
+  }
+
   const formUsuario = document.getElementById('formUsuario');
   formUsuario.addEventListener('submit', e => {
     e.preventDefault();
@@ -2250,7 +2268,7 @@
   function alternarPermissaoCategoria(usuarioId, categoriaChave, valor) {
     const usuario = usuarios.find(u => String(u.id) === String(usuarioId));
     if (!usuario) return;
-    if (!usuario.permissoes) usuario.permissoes = gerarPermissoesPadrao(usuario.cargo);
+    usuario.permissoes = mesclarPermissoesComPadrao(usuario.permissoes, usuario.cargo);
     const categoria = MODULOS_SISTEMA.find(c => c.chave === categoriaChave);
     categoria.paginas.forEach(p => { usuario.permissoes[categoriaChave][p.chave] = valor; });
     supaAtualizar('usuarios', usuarioId, { permissoes: usuario.permissoes });
@@ -2262,7 +2280,7 @@
   function alternarPermissaoPagina(usuarioId, categoriaChave, paginaChave, valor) {
     const usuario = usuarios.find(u => String(u.id) === String(usuarioId));
     if (!usuario) return;
-    if (!usuario.permissoes) usuario.permissoes = gerarPermissoesPadrao(usuario.cargo);
+    usuario.permissoes = mesclarPermissoesComPadrao(usuario.permissoes, usuario.cargo);
     usuario.permissoes[categoriaChave][paginaChave] = valor;
     supaAtualizar('usuarios', usuarioId, { permissoes: usuario.permissoes });
     renderTudo();
@@ -2291,7 +2309,8 @@
     document.getElementById('tabelaUsuarios').style.display = 'table';
 
     usuarios.forEach(u => {
-      if (!u.permissoes) { u.cargo = u.cargo || 'Usuário'; u.permissoes = gerarPermissoesPadrao(u.cargo); }
+      u.cargo = u.cargo || 'Usuário';
+      u.permissoes = mesclarPermissoesComPadrao(u.permissoes, u.cargo);
 
       const tr = document.createElement('tr');
       tr.className = 'linha-expansivel';
