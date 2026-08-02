@@ -515,6 +515,7 @@
     border-left: 4px solid #157a3d;
   }
   .stat-card.ocupado { border-left-color: #b45309; }
+  .stat-card.bloqueado { border-left-color: #c0392b; }
   .stat-card.piso { border-left-color: #2563eb; }
   .stat-card.saturacao { border-left-color: #7c3aed; }
   .stat-valor { font-size: 28px; font-weight: 800; color: #1f2937; line-height: 1.1; }
@@ -1257,6 +1258,10 @@
         <div class="stat-valor" id="statPosicoesOcupadas">0</div>
         <div class="stat-label">📦 Posições Ocupadas</div>
       </div>
+      <div class="stat-card bloqueado">
+        <div class="stat-valor" id="statPosicoesBloqueadas">0</div>
+        <div class="stat-label">🔒 Posições Bloqueadas</div>
+      </div>
       <div class="stat-card piso">
         <div class="stat-valor" id="statMateriaisPiso">0</div>
         <div class="stat-label">🅿️ Materiais em Piso</div>
@@ -1266,6 +1271,7 @@
         <div class="stat-label">📊 Média de Saturação</div>
       </div>
     </div>
+    <p id="avisoDashboardEnderecos" class="empty-msg" style="display:none; background:#fef2f2; border-color:#fca5a5; color:#991b1b;"></p>
 
     <div class="card">
       <h2>Cadastro de Endereços (Posições)</h2>
@@ -4019,7 +4025,7 @@
   // de algum material naquela posição — não depende mais do campo Status ser marcado à mão.
   function statusComputadoEndereco(en, saldoDetalhadoPreCalculado) {
     if (en.codigo === CODIGO_ENDERECO_PISO) return 'STAND BY';
-    if (en.status === 'BLOQUEADO') return 'BLOQUEADO';
+    if (String(en.status || '').trim().toUpperCase() === 'BLOQUEADO') return 'BLOQUEADO';
     const saldoDet = saldoDetalhadoPreCalculado || calcularSaldoDetalhado();
     const temEstoque = saldoDet.some(r => r.posicao === en.codigo && r.saldo > 0);
     return temEstoque ? 'OCUPADO' : 'LIVRE';
@@ -4029,13 +4035,14 @@
     const enderecosReais = enderecos.filter(en => en.codigo !== CODIGO_ENDERECO_PISO);
     const saldoDet = calcularSaldoDetalhado();
 
-    let livres = 0, ocupadas = 0;
+    let livres = 0, ocupadas = 0, bloqueadas = 0;
     let somaSaturacao = 0, qtdComCapacidade = 0;
 
     enderecosReais.forEach(en => {
       const statusReal = statusComputadoEndereco(en, saldoDet);
       if (statusReal === 'OCUPADO') ocupadas++;
       else if (statusReal === 'LIVRE') livres++;
+      else if (statusReal === 'BLOQUEADO') bloqueadas++;
 
       if (en.capacidadeKg && en.capacidadeKg > 0) {
         const pesoAtual = saldoDet
@@ -4052,17 +4059,32 @@
 
     const mediaSaturacao = qtdComCapacidade > 0 ? (somaSaturacao / qtdComCapacidade) : null;
     const materiaisEmPiso = calcularSaldoPiso().length;
+    const totalContabilizado = livres + ocupadas + bloqueadas;
+    const naoContabilizadas = enderecosReais.length - totalContabilizado;
 
-    return { livres, ocupadas, mediaSaturacao, materiaisEmPiso };
+    return { livres, ocupadas, bloqueadas, mediaSaturacao, materiaisEmPiso, totalEnderecos: enderecosReais.length, naoContabilizadas };
   }
 
   function renderDashboardEnderecos() {
     const stats = calcularDashboardEnderecos();
     document.getElementById('statPosicoesLivres').textContent = stats.livres;
     document.getElementById('statPosicoesOcupadas').textContent = stats.ocupadas;
+    document.getElementById('statPosicoesBloqueadas').textContent = stats.bloqueadas;
     document.getElementById('statMateriaisPiso').textContent = stats.materiaisEmPiso;
     document.getElementById('statMediaSaturacao').textContent =
       stats.mediaSaturacao !== null ? stats.mediaSaturacao.toFixed(1) + '%' : '-';
+
+    // Se ainda sobrar alguma posição fora da soma (Livres + Ocupadas + Bloqueadas), avisa —
+    // evita a mesma confusão de "os números não batem" acontecer de novo no futuro.
+    const avisoEl = document.getElementById('avisoDashboardEnderecos');
+    if (avisoEl) {
+      if (stats.naoContabilizadas > 0) {
+        avisoEl.style.display = 'block';
+        avisoEl.textContent = `⚠ ${stats.naoContabilizadas} posição(ões) cadastrada(s) não entraram em nenhuma categoria acima — confira o campo Status delas (Estoque → Endereços).`;
+      } else {
+        avisoEl.style.display = 'none';
+      }
+    }
   }
 
   function renderEnderecos() {
