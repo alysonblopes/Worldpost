@@ -539,6 +539,17 @@
     padding-bottom: 6px;
     border-bottom: 1px solid #e2e6ec;
   }
+  .permissoes-editar-categoria {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #7c3aed;
+    margin: 0 0 8px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed #e2e6ec;
+  }
   .permissoes-pagina {
     display: flex;
     align-items: center;
@@ -999,19 +1010,21 @@
           <input type="text" id="veiObservacao" placeholder="Opcional">
         </div>
         <div>
-          <button type="submit" class="btn">Cadastrar Veículo</button>
+          <button type="submit" class="btn" id="btnSalvarVeiculo">Cadastrar Veículo</button>
+          <button type="button" class="btn" style="background:#94a3b8; display:none;" id="btnCancelarEdicaoVeiculo" onclick="cancelarEdicaoVeiculo()">Cancelar Edição</button>
         </div>
       </form>
     </div>
     <div class="card">
       <h2>Veículos Cadastrados</h2>
+      <p class="toolbar-hint">Clique em "✏️ Editar" pra carregar os dados no formulário acima e alterar.</p>
       <div class="table-wrap">
       <table id="tabelaVeiculos">
         <thead>
           <tr>
             <th>Placa</th><th>Modelo / Tipo</th><th>Capacidade (kg)</th><th>Capacidade (Pallets)</th>
             <th>Transportadora</th><th>Status</th><th>Observação</th>
-            <th class="actions-col">Ação</th>
+            <th class="actions-col" style="width:110px;">Ação</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -1297,18 +1310,20 @@
           <input type="text" id="endObservacao" placeholder="Opcional">
         </div>
         <div>
-          <button type="submit" class="btn">Cadastrar Endereço</button>
+          <button type="submit" class="btn" id="btnSalvarEndereco">Cadastrar Endereço</button>
+          <button type="button" class="btn" style="background:#94a3b8; display:none;" id="btnCancelarEdicaoEndereco" onclick="cancelarEdicaoEndereco()">Cancelar Edição</button>
         </div>
       </form>
     </div>
     <div class="card">
       <h2>Endereços Cadastrados</h2>
+      <p class="toolbar-hint">Clique em "✏️ Editar" pra carregar os dados no formulário acima e alterar.</p>
       <div class="table-wrap">
       <table id="tabelaEnderecos">
         <thead><tr>
           <th>Posição</th><th>Rua</th><th>Bloco</th><th>Nível</th>
           <th>Capacidade (kg)</th><th>Status</th><th>Observação</th>
-          <th class="actions-col">Ação</th>
+          <th class="actions-col" style="width:110px;">Ação</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -1366,6 +1381,7 @@
       <div class="table-wrap">
       <table id="tabelaMateriais">
         <thead><tr>
+          <th style="width:26px;"></th>
           <th>Código</th><th>Descrição</th><th>Família</th><th>Unidade</th>
           <th>Estoque Mín.</th><th>Estoque Máx.</th><th>Peso Padrão (kg)</th><th>Ativo</th>
           <th>Peças/PCT</th><th>Peso Pacote (kg)</th><th>Amarração</th><th>Qtd. Altura</th>
@@ -2177,9 +2193,12 @@
     pageSequenciamentoProducao: ['estoque', 'sequenciamentoProducao'],
     pageSolicitacaoVerificacao: ['comercial', 'solicitacaoVerificacao'],
     pageSolicitacaoMaterial: ['comercial', 'solicitacaoMaterial'],
+    pageSolicitacaoProgramacaoVeiculo: ['comercial', 'solicitacaoProgramacaoVeiculo'],
     pageProgramacaoCargas: ['expedicao', 'programacao'],
     pageCadastroVeiculos: ['expedicao', 'cadastroVeiculos'],
     pageViagensProgramadas: ['expedicao', 'viagensProgramadas'],
+    pageClientes: ['cadastros', 'clientes'],
+    pagePaletizacao: ['cadastros', 'paletizacao'],
     pageUsuarios: ['configuracoes', 'usuarios']
   };
 
@@ -2223,6 +2242,48 @@
     }
   }
 
+  // Desabilita os formulários de cadastro/edição das categorias em que o usuário logado
+  // só tem permissão de visualizar (checkbox "Habilitado a Editar" desmarcada).
+  const FORM_PARA_CATEGORIA = {
+    formEndereco: 'estoque',
+    formMaterial: 'estoque',
+    formVeiculo: 'expedicao',
+    formCliente: 'cadastros',
+    formUsuario: 'configuracoes'
+  };
+  function aplicarModoSomenteLeitura() {
+    Object.entries(FORM_PARA_CATEGORIA).forEach(([idForm, categoria]) => {
+      const form = document.getElementById(idForm);
+      if (!form) return;
+      const podeEditar = usuarioPodeEditar(categoria);
+      form.querySelectorAll('input, select, button, textarea').forEach(el => { el.disabled = !podeEditar; });
+      let aviso = form.parentElement.querySelector('.aviso-somente-leitura');
+      if (!podeEditar && !aviso) {
+        aviso = document.createElement('p');
+        aviso.className = 'empty-msg aviso-somente-leitura';
+        aviso.textContent = '🔒 Você tem apenas visualização nesta categoria — peça a um administrador para habilitar edição, se precisar.';
+        form.insertAdjacentElement('afterend', aviso);
+      } else if (podeEditar && aviso) {
+        aviso.remove();
+      }
+    });
+
+    // Some com os botões de ação (editar/excluir/adicionar item) nas tabelas cujas
+    // categorias estão em modo somente leitura.
+    const podeEstoque = usuarioPodeEditar('estoque');
+    const podeExpedicao = usuarioPodeEditar('expedicao');
+    const podeCadastros = usuarioPodeEditar('cadastros');
+    document.querySelectorAll('#tabelaEnderecos .actions-col, #tabelaMateriais .actions-col').forEach(td => {
+      if (!podeEstoque) td.style.visibility = 'hidden'; else td.style.visibility = '';
+    });
+    document.querySelectorAll('#tabelaVeiculos .actions-col').forEach(td => {
+      if (!podeExpedicao) td.style.visibility = 'hidden'; else td.style.visibility = '';
+    });
+    document.querySelectorAll('#tabelaClientes .actions-col').forEach(td => {
+      if (!podeCadastros) td.style.visibility = 'hidden'; else td.style.visibility = '';
+    });
+  }
+
   function mostrarApp() {
     document.getElementById('telaLogin').style.display = 'none';
     document.getElementById('wrapperAppPrincipal').style.display = 'block';
@@ -2230,6 +2291,7 @@
     atualizarCabecalhoUsuarioLogado();
     aplicarFiltroPermissoes(usuarioLogado);
     aplicarUsuarioLogadoNosFormularios();
+    aplicarModoSomenteLeitura();
     // Garante que tabelas com campos dependentes de "quem está logado" (Apontamento,
     // Alocação de Piso etc.) sejam desenhadas de novo já refletindo o login atual.
     if (typeof renderTudo === 'function') renderTudo();
@@ -2832,12 +2894,17 @@
     ]},
     { categoria: 'Comercial', chave: 'comercial', paginas: [
         { chave: 'solicitacaoVerificacao', label: 'Solicitação de verificação de Estoque' },
-        { chave: 'solicitacaoMaterial', label: 'Solicitação de Separação de Material' }
+        { chave: 'solicitacaoMaterial', label: 'Solicitação de Separação de Material' },
+        { chave: 'solicitacaoProgramacaoVeiculo', label: 'Solicitação de Programação de Veículo' }
     ]},
     { categoria: 'Expedição', chave: 'expedicao', paginas: [
         { chave: 'programacao', label: 'Programação' },
         { chave: 'cadastroVeiculos', label: 'Cadastro de Veículos' },
         { chave: 'viagensProgramadas', label: 'Viagens Programadas / Status de Veículo' }
+    ]},
+    { categoria: 'Cadastros', chave: 'cadastros', paginas: [
+        { chave: 'clientes', label: 'Clientes' },
+        { chave: 'paletizacao', label: 'Padrão de Paletização' }
     ]},
     { categoria: 'Configurações', chave: 'configuracoes', paginas: [
         { chave: 'usuarios', label: 'Usuários' }
@@ -2854,6 +2921,9 @@
         if (cargo === 'Usuário' && cat.chave === 'configuracoes') valor = false;
         permissoes[cat.chave][p.chave] = valor;
       });
+      // Administrador sempre pode editar; para os demais cargos, começa liberado
+      // (o admin desmarca depois, categoria a categoria, se quiser deixar só leitura).
+      permissoes[cat.chave]._podeEditar = true;
     });
     return permissoes;
   }
@@ -2872,8 +2942,29 @@
           existentes[cat.chave][p.chave] = padrao[cat.chave][p.chave];
         }
       });
+      if (existentes[cat.chave]._podeEditar === undefined) {
+        existentes[cat.chave]._podeEditar = padrao[cat.chave]._podeEditar;
+      }
     });
     return existentes;
+  }
+
+  // Se o usuário pode editar/cadastrar/excluir dentro de uma categoria (Administrador
+  // sempre pode; sem ninguém logado — modo sem login — também libera tudo).
+  function usuarioPodeEditar(categoriaChave) {
+    if (!usuarioLogado || usuarioLogado.cargo === 'Administrador') return true;
+    const permissoes = mesclarPermissoesComPadrao(usuarioLogado.permissoes, usuarioLogado.cargo);
+    return !!(permissoes[categoriaChave] && permissoes[categoriaChave]._podeEditar);
+  }
+
+  function alternarPodeEditarCategoria(usuarioId, categoriaChave, valor) {
+    const usuario = usuarios.find(u => String(u.id) === String(usuarioId));
+    if (!usuario) return;
+    usuario.permissoes = mesclarPermissoesComPadrao(usuario.permissoes, usuario.cargo);
+    usuario.permissoes[categoriaChave]._podeEditar = valor;
+    supaAtualizar('usuarios', usuarioId, { permissoes: usuario.permissoes });
+    renderTudo();
+    reabrirDetalheUsuario(usuarioId);
   }
 
   const formUsuario = document.getElementById('formUsuario');
@@ -2949,6 +3040,23 @@
     reabrirDetalheUsuario(usuarioId);
   }
 
+  function salvarDadosUsuario(usuarioId) {
+    const usuario = usuarios.find(u => String(u.id) === String(usuarioId));
+    if (!usuario) return;
+    const nome = document.getElementById('editUsuNome_' + usuarioId).value.trim();
+    const matricula = document.getElementById('editUsuMatricula_' + usuarioId).value.trim();
+    const email = document.getElementById('editUsuEmail_' + usuarioId).value.trim().toLowerCase();
+    if (!nome || !matricula) {
+      alert('Nome e Matrícula não podem ficar em branco.');
+      return;
+    }
+    Object.assign(usuario, { nome, matricula, email: email || null });
+    supaAtualizar('usuarios', usuarioId, { nome, matricula, email: email || null });
+    renderTudo();
+    reabrirDetalheUsuario(usuarioId);
+    alert('Dados atualizados!');
+  }
+
   function renderUsuarios() {
     const tbody = document.querySelector('#tabelaUsuarios tbody');
     const msg = document.getElementById('msgUsuVazio');
@@ -3001,6 +3109,11 @@
                 onchange="alternarPermissaoCategoria('${u.id}', '${cat.chave}', this.checked)">
               ${cat.categoria}
             </label>
+            <label class="permissoes-editar-categoria">
+              <input type="checkbox" ${u.permissoes[cat.chave]._podeEditar ? 'checked' : ''}
+                onchange="alternarPodeEditarCategoria('${u.id}', '${cat.chave}', this.checked)">
+              ✏️ Habilitado a Editar
+            </label>
             ${paginasHtml}
           </div>
         `;
@@ -3009,7 +3122,16 @@
       trDetalhe.innerHTML = `
         <td colspan="6">
           <div onclick="event.stopPropagation();">
-            <div class="truck-card-row" style="border-top:none; padding-top:0;">
+            <div class="truck-card-row" style="border-top:none; padding-top:0; flex-wrap:wrap;">
+              <label>Nome</label>
+              <input type="text" id="editUsuNome_${u.id}" value="${u.nome}" style="width:160px;">
+              <label>Matrícula</label>
+              <input type="text" id="editUsuMatricula_${u.id}" value="${u.matricula}" style="width:100px;">
+              <label>E-mail</label>
+              <input type="email" id="editUsuEmail_${u.id}" value="${u.email || ''}" style="width:180px;">
+              <button type="button" class="btn" style="background:#1d4ed8;" onclick="salvarDadosUsuario('${u.id}')">💾 Salvar Dados</button>
+            </div>
+            <div class="truck-card-row" style="border-top:none; padding-top:6px;">
               <label>Cargo</label>
               <select onchange="atualizarCargoUsuario('${u.id}', this.value)">
                 <option value="Administrador" ${u.cargo === 'Administrador' ? 'selected' : ''}>Administrador</option>
@@ -3019,7 +3141,7 @@
               <button type="button" class="btn" style="background:#475569;" onclick="definirNovaSenhaUsuario('${u.id}')">🔑 Definir Nova Senha</button>
               <span style="font-size:12px; color:${u.senhaHash ? '#157a3d' : '#c0392b'};">${u.senhaHash ? '✔ Senha definida' : '⚠ Sem senha ainda'}</span>
             </div>
-            <p class="toolbar-hint">Marque os módulos que ${u.nome.split(' ')[0]} pode acessar. Isso serve como referência — a aplicação real das permissões será feita via políticas de RLS no Supabase.</p>
+            <p class="toolbar-hint">Marque os módulos que ${u.nome.split(' ')[0]} pode acessar, e se ele pode só ver ou também editar em cada categoria.</p>
             <div class="permissoes-wrap">${blocosCategorias}</div>
           </div>
         </td>
@@ -3563,6 +3685,8 @@
 
   // ============== EXPEDIÇÃO > CADASTRO DE VEÍCULOS ==============
   const formVeiculo = document.getElementById('formVeiculo');
+  let veiculoEmEdicaoId = null;
+
   formVeiculo.addEventListener('submit', e => {
     e.preventDefault();
     const placa = document.getElementById('veiPlaca').value.trim().toUpperCase();
@@ -3574,23 +3698,50 @@
     const observacao = document.getElementById('veiObservacao').value.trim();
     if (!placa) return;
 
-    const existente = veiculos.find(v => v.placa === placa);
+    const existente = veiculoEmEdicaoId
+      ? veiculos.find(v => String(v.id) === String(veiculoEmEdicaoId))
+      : veiculos.find(v => v.placa === placa);
+
     if (existente) {
-      Object.assign(existente, { modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao });
-      supaAtualizar('veiculos', existente.id, { modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao });
+      Object.assign(existente, { placa, modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao });
+      supaAtualizar('veiculos', existente.id, { placa, modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao });
     } else {
       const novoVeiculo = { id: crypto.randomUUID(), placa, modelo, capacidadeKg, capacidadePallets, transportadora, status, observacao };
       veiculos.push(novoVeiculo);
       supaInserir('veiculos', novoVeiculo);
     }
-    formVeiculo.reset();
-    document.getElementById('veiStatus').value = 'Disponível';
+    cancelarEdicaoVeiculo();
     renderTudo();
   });
+
+  function editarVeiculo(id) {
+    const v = veiculos.find(v => String(v.id) === String(id));
+    if (!v) return;
+    veiculoEmEdicaoId = id;
+    document.getElementById('veiPlaca').value = v.placa || '';
+    document.getElementById('veiModelo').value = v.modelo || '';
+    document.getElementById('veiCapacidade').value = v.capacidadeKg || '';
+    document.getElementById('veiCapacidadePallets').value = v.capacidadePallets || '';
+    document.getElementById('veiTransportadora').value = v.transportadora || '';
+    document.getElementById('veiStatus').value = v.status || 'Disponível';
+    document.getElementById('veiObservacao').value = v.observacao || '';
+    document.getElementById('btnSalvarVeiculo').textContent = 'Salvar Alterações';
+    document.getElementById('btnCancelarEdicaoVeiculo').style.display = 'inline-block';
+    document.getElementById('formVeiculo').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function cancelarEdicaoVeiculo() {
+    veiculoEmEdicaoId = null;
+    formVeiculo.reset();
+    document.getElementById('veiStatus').value = 'Disponível';
+    document.getElementById('btnSalvarVeiculo').textContent = 'Cadastrar Veículo';
+    document.getElementById('btnCancelarEdicaoVeiculo').style.display = 'none';
+  }
 
   function removerVeiculo(id) {
     veiculos = veiculos.filter(v => String(v.id) !== String(id));
     supaRemover('veiculos', id);
+    if (veiculoEmEdicaoId === id) cancelarEdicaoVeiculo();
     renderTudo();
   }
 
@@ -3615,7 +3766,10 @@
         <td>${v.transportadora || '-'}</td>
         <td>${v.status || '-'}</td>
         <td>${v.observacao || '-'}</td>
-        <td class="actions-col"><button class="btn danger" onclick="removerVeiculo('${v.id}')">✕</button></td>
+        <td class="actions-col">
+          <button class="btn" style="display:block; width:100%; padding:5px 8px; font-size:12px; margin-bottom:4px;" onclick="editarVeiculo('${v.id}')">✏️ Editar</button>
+          <button class="btn danger" style="display:block; width:100%; padding:5px 8px; font-size:12px;" onclick="removerVeiculo('${v.id}')">✕</button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
@@ -3791,6 +3945,8 @@
 
   // ============== ENDEREÇOS ==============
   const formEndereco = document.getElementById('formEndereco');
+  let enderecoEmEdicaoId = null;
+
   formEndereco.addEventListener('submit', e => {
     e.preventDefault();
     const codigo = document.getElementById('endCodigo').value.trim().toUpperCase();
@@ -3802,19 +3958,45 @@
     const observacao = document.getElementById('endObservacao').value.trim();
     if (!codigo) return;
 
-    const existente = enderecos.find(en => en.codigo === codigo);
+    const existente = enderecoEmEdicaoId
+      ? enderecos.find(en => String(en.id) === String(enderecoEmEdicaoId))
+      : enderecos.find(en => en.codigo === codigo);
+
     if (existente) {
-      Object.assign(existente, { rua, bloco, nivel, capacidadeKg, status, observacao });
-      supaAtualizar('enderecos', existente.id, { rua, bloco, nivel, capacidadeKg, status, observacao });
+      Object.assign(existente, { codigo, rua, bloco, nivel, capacidadeKg, status, observacao });
+      supaAtualizar('enderecos', existente.id, { codigo, rua, bloco, nivel, capacidadeKg, status, observacao });
     } else {
       const novoEndereco = { id: crypto.randomUUID(), codigo, rua, bloco, nivel, capacidadeKg, status, observacao, descricao: '' };
       enderecos.push(novoEndereco);
       supaInserir('enderecos', novoEndereco);
     }
-    formEndereco.reset();
-    document.getElementById('endStatus').value = 'LIVRE';
+    cancelarEdicaoEndereco();
     renderTudo();
   });
+
+  function editarEndereco(id) {
+    const en = enderecos.find(e => String(e.id) === String(id));
+    if (!en) return;
+    enderecoEmEdicaoId = id;
+    document.getElementById('endCodigo').value = en.codigo || '';
+    document.getElementById('endRua').value = en.rua || '';
+    document.getElementById('endBloco').value = en.bloco || '';
+    document.getElementById('endNivel').value = en.nivel || '';
+    document.getElementById('endCapacidade').value = en.capacidadeKg || '';
+    document.getElementById('endStatus').value = en.status || 'LIVRE';
+    document.getElementById('endObservacao').value = en.observacao || '';
+    document.getElementById('btnSalvarEndereco').textContent = 'Salvar Alterações';
+    document.getElementById('btnCancelarEdicaoEndereco').style.display = 'inline-block';
+    document.getElementById('formEndereco').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function cancelarEdicaoEndereco() {
+    enderecoEmEdicaoId = null;
+    formEndereco.reset();
+    document.getElementById('endStatus').value = 'LIVRE';
+    document.getElementById('btnSalvarEndereco').textContent = 'Cadastrar Endereço';
+    document.getElementById('btnCancelarEdicaoEndereco').style.display = 'none';
+  }
 
   function removerEndereco(id) {
     const alvo = enderecos.find(e => String(e.id) === String(id));
@@ -3908,7 +4090,10 @@
         <td>${en.capacidadeKg ? formatarQtd(en.capacidadeKg) : '-'}</td>
         <td class="${classeStatus}">${statusReal}</td>
         <td>${en.observacao || '-'}</td>
-        <td class="actions-col"><button class="btn danger" onclick="removerEndereco('${en.id}')">✕</button></td>
+        <td class="actions-col">
+          <button class="btn" style="display:block; width:100%; padding:5px 8px; font-size:12px; margin-bottom:4px;" onclick="editarEndereco('${en.id}')">✏️ Editar</button>
+          <button class="btn danger" style="display:block; width:100%; padding:5px 8px; font-size:12px;" onclick="removerEndereco('${en.id}')">✕</button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
@@ -3930,9 +4115,45 @@
   });
 
   function removerMaterial(id) {
-    materiais = materiais.filter(m => m.id !== id);
+    materiais = materiais.filter(m => String(m.id) !== String(id));
     supaRemover('materiais', id);
     renderTudo();
+  }
+
+  function salvarEdicaoMaterial(id) {
+    const m = materiais.find(m => String(m.id) === String(id));
+    if (!m) return;
+
+    const campos = {
+      codigo: document.getElementById('editMatCodigo_' + id).value.trim().toUpperCase(),
+      descricao: document.getElementById('editMatDescricao_' + id).value.trim(),
+      familia: document.getElementById('editMatFamilia_' + id).value.trim(),
+      unidade: document.getElementById('editMatUnidade_' + id).value.trim(),
+      estoqueMinimo: parseFloat(document.getElementById('editMatEstMin_' + id).value) || null,
+      estoqueMaximo: parseFloat(document.getElementById('editMatEstMax_' + id).value) || null,
+      pesoUnitarioKg: parseFloat(document.getElementById('editMatPeso_' + id).value) || null,
+      ativo: document.getElementById('editMatAtivo_' + id).value,
+      pecasPorPct: parseFloat(document.getElementById('editMatPecasPct_' + id).value) || null,
+      pesoPacoteKg: parseFloat(document.getElementById('editMatPesoPacote_' + id).value) || null,
+      amarracao: document.getElementById('editMatAmarracao_' + id).value.trim(),
+      qtdAltura: document.getElementById('editMatQtdAltura_' + id).value.trim(),
+      qtdPctPorPallet: document.getElementById('editMatQtdPctPallet_' + id).value.trim(),
+      qtdTotalPc: parseFloat(document.getElementById('editMatQtdTotal_' + id).value) || null
+    };
+    if (!campos.codigo || !campos.descricao) {
+      alert('Código e Descrição não podem ficar em branco.');
+      return;
+    }
+    Object.assign(m, campos);
+    supaAtualizar('materiais', id, campos);
+    renderTudo();
+    setTimeout(() => {
+      const linha = document.getElementById('detalhe_' + id);
+      if (linha) linha.style.display = 'table-row';
+      const seta = document.getElementById('seta_' + id);
+      if (seta) seta.classList.add('aberto');
+    }, 0);
+    alert('Material atualizado!');
   }
 
   function renderMateriais() {
@@ -3948,7 +4169,10 @@
     document.getElementById('tabelaMateriais').style.display = 'table';
     materiais.forEach(m => {
       const tr = document.createElement('tr');
+      tr.className = 'linha-expansivel';
+      tr.setAttribute('onclick', `toggleDetalheApontamento('${m.id}')`);
       tr.innerHTML = `
+        <td><span class="expand-arrow" id="seta_${m.id}">▸</span></td>
         <td><span class="badge">${m.codigo}</span></td>
         <td>${m.descricao}</td>
         <td>${m.familia || '-'}</td>
@@ -3963,9 +4187,45 @@
         <td>${m.qtdAltura || '-'}</td>
         <td>${m.qtdPctPorPallet || '-'}</td>
         <td>${m.qtdTotalPc ? formatarQtd(m.qtdTotalPc) : '-'}</td>
-        <td class="actions-col"><button class="btn danger" onclick="removerMaterial(${m.id})">✕</button></td>
+        <td class="actions-col"><button class="btn danger" onclick="event.stopPropagation(); removerMaterial('${m.id}')">✕</button></td>
       `;
       tbody.appendChild(tr);
+
+      const trDetalhe = document.createElement('tr');
+      trDetalhe.className = 'linha-detalhe';
+      trDetalhe.id = 'detalhe_' + m.id;
+      trDetalhe.style.display = 'none';
+      trDetalhe.innerHTML = `
+        <td colspan="16">
+          <div onclick="event.stopPropagation();">
+            <strong style="font-size:12.5px; color:#1e40af;">✏️ Editar material:</strong>
+            <div class="grid" style="margin-top:8px;">
+              <div><label>Código</label><input type="text" id="editMatCodigo_${m.id}" value="${m.codigo}"></div>
+              <div><label>Descrição</label><input type="text" id="editMatDescricao_${m.id}" value="${m.descricao}"></div>
+              <div><label>Família</label><input type="text" id="editMatFamilia_${m.id}" value="${m.familia || ''}"></div>
+              <div><label>Unidade</label><input type="text" id="editMatUnidade_${m.id}" value="${m.unidade || ''}"></div>
+              <div><label>Estoque Mín.</label><input type="number" step="any" id="editMatEstMin_${m.id}" value="${m.estoqueMinimo ?? ''}"></div>
+              <div><label>Estoque Máx.</label><input type="number" step="any" id="editMatEstMax_${m.id}" value="${m.estoqueMaximo ?? ''}"></div>
+              <div><label>Peso Padrão (kg)</label><input type="number" step="any" id="editMatPeso_${m.id}" value="${m.pesoUnitarioKg ?? ''}"></div>
+              <div><label>Ativo</label>
+                <select id="editMatAtivo_${m.id}">
+                  <option value="" ${!m.ativo ? 'selected' : ''}>-</option>
+                  <option value="Sim" ${m.ativo === 'Sim' ? 'selected' : ''}>Sim</option>
+                  <option value="Não" ${m.ativo === 'Não' ? 'selected' : ''}>Não</option>
+                </select>
+              </div>
+              <div><label>Peças/PCT</label><input type="number" step="any" id="editMatPecasPct_${m.id}" value="${m.pecasPorPct ?? ''}"></div>
+              <div><label>Peso Pacote (kg)</label><input type="number" step="any" id="editMatPesoPacote_${m.id}" value="${m.pesoPacoteKg ?? ''}"></div>
+              <div><label>Amarração</label><input type="text" id="editMatAmarracao_${m.id}" value="${m.amarracao || ''}"></div>
+              <div><label>Qtd. Altura</label><input type="text" id="editMatQtdAltura_${m.id}" value="${m.qtdAltura || ''}"></div>
+              <div><label>Qtd. PCT/Pallet</label><input type="text" id="editMatQtdPctPallet_${m.id}" value="${m.qtdPctPorPallet || ''}"></div>
+              <div><label>Qtd. Total PC</label><input type="number" step="any" id="editMatQtdTotal_${m.id}" value="${m.qtdTotalPc ?? ''}"></div>
+              <div><button type="button" class="btn" onclick="salvarEdicaoMaterial('${m.id}')">💾 Salvar Alterações</button></div>
+            </div>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(trDetalhe);
     });
   }
 
@@ -6183,6 +6443,7 @@
     atualizarBadgesSolicitacao();
     tornarTabelasOrdenaveis();
     atualizarCabecalhoUsuarioLogado();
+    aplicarModoSomenteLeitura();
   }
 
   carregarTudoDoSupabase().then(inicializarAutenticacao).finally(renderTudo);
