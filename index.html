@@ -879,7 +879,7 @@
 
     <div class="card">
       <h2>Solicitações Pendentes do Comercial</h2>
-      <p class="toolbar-hint">Clique nos cabeçalhos (ex: <strong>Destino</strong> ou <strong>OC</strong>) para agrupar visualmente. Marque as que devem viajar juntas e consolide numa única carga.</p>
+      <p class="toolbar-hint">Agrupado automaticamente por <strong>Cidade</strong>, com o total de pallets de cada grupo. Marque a caixinha do cabeçalho da cidade pra selecionar tudo daquele grupo de uma vez, ou marque item a item, e consolide numa única carga.</p>
       <div class="table-wrap">
       <table id="tabelaSolPendentesExpedicao">
         <thead>
@@ -1696,9 +1696,13 @@
           <label>Data de Solicitação</label>
           <input type="date" id="solDataSolicitacao" required>
         </div>
-        <div>
+        <div id="campoSolicitanteVerifWrap">
           <label>Solicitante</label>
           <input type="text" id="solSolicitante" placeholder="Nome de quem está solicitando">
+        </div>
+        <div id="campoSolicitanteVerifLogado" style="display:none;">
+          <label>Solicitante</label>
+          <input type="text" id="solSolicitanteLogadoTexto" readonly style="background:#f3f4f6;">
         </div>
         <div>
           <label>Status</label>
@@ -1865,8 +1869,21 @@
           <input type="datetime-local" id="spvJanelaCarregamento">
         </div>
         <div>
+          <label>Tipo de Transporte</label>
+          <select id="spvTipoTransporte" onchange="atualizarCampoVeiculoSpv()">
+            <option value="Transportadora">Transportadora (terceiro)</option>
+            <option value="Propria">Própria (veículo da frota)</option>
+          </select>
+        </div>
+        <div id="campoTransportadoraSpvWrap">
           <label>Transportadora</label>
-          <input type="text" id="spvTransportadora" placeholder="Ex: WP, PRÓPRIA">
+          <input type="text" id="spvTransportadora" placeholder="Ex: WP">
+        </div>
+        <div id="campoVeiculoSpvWrap" style="display:none;">
+          <label>Veículo da Frota Própria</label>
+          <select id="spvVeiculoProprio" onchange="atualizarPlacaPorVeiculoSpv()">
+            <option value="">Selecione...</option>
+          </select>
         </div>
         <div>
           <label>Tipo</label>
@@ -2069,7 +2086,7 @@
     clientes: { cd: 'cd', endereco: 'endereco', cidade: 'cidade', cnpj: 'cnpj', empresa: 'empresa' },
     solicitacoes_programacao_veiculo: {
       ordemColeta: 'ordem_coleta', janelaCarregamento: 'janela_carregamento', transportadora: 'transportadora',
-      tipo: 'tipo', placa: 'placa', item: 'item', quantidade: 'quantidade', pallets: 'pallets',
+      veiculoId: 'veiculo_id', tipo: 'tipo', placa: 'placa', item: 'item', quantidade: 'quantidade', pallets: 'pallets',
       cliente: 'cliente', destino: 'destino', endereco: 'endereco', cidade: 'cidade', nf: 'nf', janelaEntrega: 'janela_entrega',
       status: 'status', cargaId: 'carga_id', solicitante: 'solicitante'
     }
@@ -2361,6 +2378,9 @@
         wrapTexto.style.display = 'none';
       }
     }
+
+    // Campo Solicitante da Solicitação de Verificação de Estoque
+    aplicarCampoSolicitanteGenerico('campoSolicitanteVerifWrap', 'campoSolicitanteVerifLogado', 'solSolicitanteLogadoTexto');
 
     // Campo Solicitante da Solicitação de Separação de Material
     aplicarCampoSolicitanteGenerico('campoSolicitanteMatWrap', 'campoSolicitanteMatLogado', 'solMatSolicitanteLogadoTexto');
@@ -2798,12 +2818,45 @@
   }
   document.getElementById('spvDestino').addEventListener('input', atualizarEnderecoSpv);
 
+  // Alterna entre "Transportadora" (texto livre) e "Própria" (escolher da frota cadastrada)
+  function atualizarCampoVeiculoSpv() {
+    const ehPropria = document.getElementById('spvTipoTransporte').value === 'Propria';
+    document.getElementById('campoTransportadoraSpvWrap').style.display = ehPropria ? 'none' : 'block';
+    document.getElementById('campoVeiculoSpvWrap').style.display = ehPropria ? 'block' : 'none';
+    const placaInput = document.getElementById('spvPlaca');
+    if (ehPropria) {
+      document.getElementById('spvTransportadora').value = 'PRÓPRIA';
+    } else {
+      document.getElementById('spvVeiculoProprio').value = '';
+      placaInput.readOnly = false;
+      placaInput.value = '';
+    }
+  }
+
+  function atualizarPlacaPorVeiculoSpv() {
+    const veiculo = veiculos.find(v => String(v.id) === String(document.getElementById('spvVeiculoProprio').value));
+    const placaInput = document.getElementById('spvPlaca');
+    if (veiculo) {
+      placaInput.value = veiculo.placa;
+      placaInput.readOnly = true;
+    } else {
+      placaInput.value = '';
+      placaInput.readOnly = false;
+    }
+  }
+
   document.getElementById('formSolProgVeiculo').addEventListener('submit', e => {
     e.preventDefault();
     const item = document.getElementById('spvItem').value.trim().toUpperCase();
     const quantidade = parseFloat(document.getElementById('spvQuantidade').value);
     const destino = document.getElementById('spvDestino').value.trim().toUpperCase();
     if (!item || isNaN(quantidade) || quantidade <= 0 || !destino) return;
+
+    const ehPropria = document.getElementById('spvTipoTransporte').value === 'Propria';
+    if (ehPropria && !document.getElementById('spvVeiculoProprio').value) {
+      alert('Selecione um veículo da frota, ou troque o Tipo de Transporte para "Transportadora".');
+      return;
+    }
 
     const solicitante = usuarioLogado ? usuarioLogado.nome : document.getElementById('spvSolicitante').value.trim();
     const jc = document.getElementById('spvJanelaCarregamento').value;
@@ -2813,7 +2866,8 @@
       id: crypto.randomUUID(),
       ordemColeta: document.getElementById('spvOrdemColeta').value.trim(),
       janelaCarregamento: jc || null,
-      transportadora: document.getElementById('spvTransportadora').value.trim(),
+      transportadora: ehPropria ? 'PRÓPRIA' : document.getElementById('spvTransportadora').value.trim(),
+      veiculoId: ehPropria ? document.getElementById('spvVeiculoProprio').value : null,
       tipo: document.getElementById('spvTipo').value,
       placa: document.getElementById('spvPlaca').value.trim().toUpperCase(),
       item,
@@ -2834,6 +2888,7 @@
 
     document.getElementById('formSolProgVeiculo').reset();
     document.getElementById('spvTipo').value = 'Dedicado';
+    atualizarCampoVeiculoSpv();
     renderTudo();
   });
 
@@ -3474,26 +3529,64 @@
     msg.style.display = 'none';
     document.getElementById('tabelaSolPendentesExpedicao').style.display = 'table';
 
+    // Agrupa por cidade (quem não tiver cidade preenchida cai num grupo "Sem cidade definida",
+    // sempre exibido por último, pra não atrapalhar quem já preencheu certinho)
+    const porCidade = {};
     pendentes.forEach(s => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td style="text-align:center;"><input type="checkbox" class="chkSolPendenteExpedicao" data-id="${s.id}"></td>
-        <td>${s.ordemColeta || '-'}</td>
-        <td><span class="badge">${s.item}</span></td>
-        <td>${formatarQtd(s.quantidade)}</td>
-        <td>${s.pallets ?? '-'}</td>
-        <td>${s.cliente || '-'}</td>
-        <td>${s.destino}</td>
-        <td>${s.endereco || '-'}</td>
-        <td>${s.cidade || '-'}</td>
-        <td>${s.transportadora || '-'}</td>
-        <td>${s.tipo || '-'}</td>
-        <td>${s.placa || '-'}</td>
-        <td>${s.janelaCarregamento ? formatarDataHoraBR(s.janelaCarregamento) : '-'}</td>
-        <td>${s.nf || '-'}</td>
-        <td>${s.janelaEntrega ? formatarDataHoraBR(s.janelaEntrega) : '-'}</td>
+      const chave = s.cidade || '(Sem cidade definida)';
+      if (!porCidade[chave]) porCidade[chave] = [];
+      porCidade[chave].push(s);
+    });
+    const cidadesOrdenadas = Object.keys(porCidade).sort((a, b) => {
+      if (a === '(Sem cidade definida)') return 1;
+      if (b === '(Sem cidade definida)') return -1;
+      return a.localeCompare(b, 'pt-BR');
+    });
+
+    cidadesOrdenadas.forEach(cidade => {
+      const itensDaCidade = porCidade[cidade];
+      const totalPallets = itensDaCidade.reduce((soma, s) => soma + (s.pallets || 0), 0);
+      const idGrupo = slugify(cidade);
+
+      const trGrupo = document.createElement('tr');
+      trGrupo.innerHTML = `
+        <td colspan="15" style="background:#eef2f7; font-weight:700; padding:8px 12px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" onchange="marcarTodosDaCidade('${idGrupo}', this.checked)">
+            🏙️ ${cidade} — ${itensDaCidade.length} solicitação(ões), ${formatarQtd(totalPallets)} pallet(s) no total
+          </label>
+        </td>
       `;
-      tbody.appendChild(tr);
+      tbody.appendChild(trGrupo);
+
+      itensDaCidade.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.className = 'grupo-cidade-' + idGrupo;
+        tr.innerHTML = `
+          <td style="text-align:center;"><input type="checkbox" class="chkSolPendenteExpedicao" data-id="${s.id}"></td>
+          <td>${s.ordemColeta || '-'}</td>
+          <td><span class="badge">${s.item}</span></td>
+          <td>${formatarQtd(s.quantidade)}</td>
+          <td>${s.pallets ?? '-'}</td>
+          <td>${s.cliente || '-'}</td>
+          <td>${s.destino}</td>
+          <td>${s.endereco || '-'}</td>
+          <td>${s.cidade || '-'}</td>
+          <td>${s.transportadora || '-'}</td>
+          <td>${s.tipo || '-'}</td>
+          <td>${s.placa || '-'}</td>
+          <td>${s.janelaCarregamento ? formatarDataHoraBR(s.janelaCarregamento) : '-'}</td>
+          <td>${s.nf || '-'}</td>
+          <td>${s.janelaEntrega ? formatarDataHoraBR(s.janelaEntrega) : '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+  }
+
+  function marcarTodosDaCidade(idGrupo, marcar) {
+    document.querySelectorAll('.grupo-cidade-' + idGrupo + ' .chkSolPendenteExpedicao').forEach(chk => {
+      chk.checked = marcar;
     });
   }
 
@@ -3520,15 +3613,17 @@
       return;
     }
 
+    const veiculoBase = base.veiculoId ? veiculos.find(v => String(v.id) === String(base.veiculoId)) : null;
+
     const novaCarga = {
       id: crypto.randomUUID(),
       numeroOC,
       janelaCarregamento: base.janelaCarregamento || new Date().toISOString().slice(0, 16),
       modalidade: marcadas.length > 1 ? 'Fracionado' : 'Dedicado',
       transportadora: base.transportadora || '?',
-      tipoVeiculo: '',
-      placa: base.placa || '',
-      veiculoId: null,
+      tipoVeiculo: veiculoBase ? (veiculoBase.modelo || '') : '',
+      placa: base.placa || (veiculoBase ? veiculoBase.placa : ''),
+      veiculoId: base.veiculoId || null,
       status: 'Programada'
     };
     cargasProgramadas.push(novaCarga);
@@ -4295,6 +4390,14 @@
       selCargaVeiculoProprio.value = valorSelecionadoCarga;
     }
 
+    const selSpvVeiculoProprio = document.getElementById('spvVeiculoProprio');
+    const valorSelecionadoSpv = selSpvVeiculoProprio.value;
+    selSpvVeiculoProprio.innerHTML = '<option value="">Selecione...</option>' +
+      veiculos.map(v => `<option value="${v.id}">${v.placa}${v.modelo ? ' - ' + v.modelo : ''}${v.capacidadePallets ? ' (' + formatarQtd(v.capacidadePallets) + ' pallets)' : ''}</option>`).join('');
+    if (veiculos.some(v => String(v.id) === String(valorSelecionadoSpv))) {
+      selSpvVeiculoProprio.value = valorSelecionadoSpv;
+    }
+
     // Atualiza a descrição preenchida automaticamente conforme o material selecionado
     atualizarDescricaoSolicitacao();
     atualizarDescricaoEPesoSolicitacaoMaterial();
@@ -4386,7 +4489,7 @@
     const quantidadeSolicitada = parseFloat(document.getElementById('solQuantidadeSolicitada').value);
     const unidadeMedida = document.getElementById('solUnidadeMedida').value.trim();
     const dataSolicitacao = solDataInput.value;
-    const solicitante = document.getElementById('solSolicitante').value.trim();
+    const solicitante = usuarioLogado ? usuarioLogado.nome : document.getElementById('solSolicitante').value.trim();
 
     if (!numeroPedido || !dataSolicitacao || isNaN(quantidadeSolicitada) || quantidadeSolicitada <= 0) return;
     if (!materialEncontrado) {
@@ -6350,6 +6453,7 @@
   function tornarTabelasOrdenaveis() {
     document.querySelectorAll('table').forEach(tabela => {
       if (!tabela.id) return;
+      if (tabela.id === 'tabelaSolPendentesExpedicao') return; // tem agrupamento próprio por cidade
       const ths = tabela.querySelectorAll('thead th');
       ths.forEach((th, indice) => {
         if (th.dataset.ordenavelPreparado) return; // já preparado, evita duplicar listener
