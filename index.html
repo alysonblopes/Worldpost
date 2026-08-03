@@ -622,6 +622,13 @@
   .gantt-bar.atrasado { background: linear-gradient(135deg, #dc2626, #b91c1c); }
   .gantt-bar.concluido { background: linear-gradient(135deg, #6b7280, #4b5563); }
   .gantt-bar.emandamento { background: linear-gradient(135deg, #d97706, #b45309); }
+  .gantt-bar.destaque {
+    outline: 3px solid #facc15;
+    box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.4), 0 2px 6px rgba(0,0,0,0.3);
+    z-index: 2;
+    transform: scale(1.03);
+  }
+  .gantt-bar.dimmed { opacity: 0.25; filter: grayscale(0.4); }
   .campo-mapeamento-select { min-width: 180px; }
 
   .tela-auth {
@@ -1635,8 +1642,9 @@
 
     <div class="card">
       <h2>🔍 Buscar Produto</h2>
-      <div class="filtro">
-        <input type="text" id="filtroSequenciamento" placeholder="Buscar por código ou descrição do produto...">
+      <div class="filtro" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <input type="text" id="filtroSequenciamento" placeholder="Buscar por código ou descrição do produto..." style="flex:1; min-width:220px;">
+        <div id="infoEstoqueBusca" class="empty-msg" style="margin:0; padding:8px 14px; background:#eff6ff; border-color:#93c5fd; color:#1e40af; white-space:nowrap;">Digite um código pra ver o estoque atual</div>
       </div>
       <div class="table-wrap">
       <table id="tabelaBuscaSequenciamento">
@@ -6267,7 +6275,39 @@
   }
 
   const filtroSequenciamentoInput = document.getElementById('filtroSequenciamento');
-  filtroSequenciamentoInput.addEventListener('input', renderBuscaSequenciamento);
+  filtroSequenciamentoInput.addEventListener('input', () => {
+    renderBuscaSequenciamento();
+    renderGanttSequenciamento();
+    atualizarInfoEstoqueBusca();
+  });
+
+  // Mostra o saldo atual (considerando o Piso) de qualquer material cujo código ou
+  // descrição bata com o termo digitado na busca — soma todos os materiais que baterem.
+  function atualizarInfoEstoqueBusca() {
+    const elInfo = document.getElementById('infoEstoqueBusca');
+    if (!elInfo) return;
+    const termo = filtroSequenciamentoInput.value.trim().toLowerCase();
+    if (!termo) {
+      elInfo.textContent = 'Digite um código pra ver o estoque atual';
+      return;
+    }
+    const materiaisEncontrados = materiais.filter(m =>
+      m.codigo.toLowerCase().includes(termo) || (m.descricao || '').toLowerCase().includes(termo)
+    );
+    if (materiaisEncontrados.length === 0) {
+      elInfo.textContent = '📦 Material não encontrado no cadastro de Estoque (Materiais).';
+      return;
+    }
+    const saldoDet = calcularSaldoDetalhado();
+    let totalGeral = 0, totalPiso = 0;
+    materiaisEncontrados.forEach(mat => {
+      saldoDet.filter(r => r.codigoMaterial === mat.codigo).forEach(r => {
+        totalGeral += Math.max(r.saldo, 0);
+        if (r.posicao === CODIGO_ENDERECO_PISO) totalPiso += Math.max(r.saldo, 0);
+      });
+    });
+    elInfo.textContent = `📦 Em estoque: ${formatarQtd(totalGeral)} (incluindo ${formatarQtd(totalPiso)} no Piso)`;
+  }
 
   function renderBuscaSequenciamento() {
     const tbody = document.querySelector('#tabelaBuscaSequenciamento tbody');
@@ -6381,6 +6421,14 @@
       if (!porMaquina[x.maquina]) porMaquina[x.maquina] = { categoria: x.categoria, itens: [] };
       porMaquina[x.maquina].itens.push(x);
     });
+    // Mostra só as 3 próximas programações de cada máquina (a lista já vem ordenada por início)
+    const LIMITE_PROGRAMACOES_POR_MAQUINA = 3;
+    Object.values(porMaquina).forEach(info => {
+      info.itens = info.itens.slice(0, LIMITE_PROGRAMACOES_POR_MAQUINA);
+    });
+
+    // Termo de busca atual (Buscar Produto) — usado para destacar as barras relacionadas
+    const termoBusca = (document.getElementById('filtroSequenciamento')?.value || '').trim().toLowerCase();
 
     function construirLinhaMaquina(nomeMaquina, itens) {
       const totalHoras = itens.reduce((soma, x) => soma + Math.max(0, (x.fim - x.inicio) / 3600000), 0);
@@ -6403,7 +6451,14 @@
         const linha2 = [produto, descricao, cliente].filter(Boolean).join(' - ');
         const tituloCompleto = `${linha1}\n${linha2}`.replace(/"/g, '&quot;');
 
-        return `<div class="gantt-bar ${classeStatus}" style="left:${offsetPx}px; width:${larguraLimitada - 3}px;" title="${tituloCompleto}">
+        // Se houver busca ativa, destaca as barras relacionadas e apaga (dimmed) as demais
+        let classeBusca = '';
+        if (termoBusca) {
+          const bateComBusca = String(produto).toLowerCase().includes(termoBusca) || String(descricao).toLowerCase().includes(termoBusca);
+          classeBusca = bateComBusca ? 'destaque' : 'dimmed';
+        }
+
+        return `<div class="gantt-bar ${classeStatus} ${classeBusca}" style="left:${offsetPx}px; width:${larguraLimitada - 3}px;" title="${tituloCompleto}">
           <span class="gantt-bar-linha1">${linha1}</span>
           <span class="gantt-bar-linha2">${linha2 || '(sem descrição)'}</span>
         </div>`;
