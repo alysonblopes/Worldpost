@@ -886,16 +886,15 @@
 
     <div class="card">
       <h2>Solicitações Pendentes do Comercial</h2>
-      <p class="toolbar-hint">Agrupado automaticamente por <strong>Cidade</strong>, com o total de pallets de cada grupo. Marque a caixinha do cabeçalho da cidade pra selecionar tudo daquele grupo de uma vez, ou marque item a item, e consolide numa única carga.</p>
+      <p class="toolbar-hint">Agrupado automaticamente por <strong>Cidade</strong>, com o total de pallets de cada grupo (somando todos os itens). Marque a caixinha do cabeçalho da cidade pra selecionar tudo daquele grupo de uma vez, ou marque solicitação a solicitação, e consolide numa única carga.</p>
       <div class="table-wrap">
       <table id="tabelaSolPendentesExpedicao">
         <thead>
           <tr>
             <th style="width:30px;">Sel.</th>
-            <th>OC</th><th>Item</th><th>Quantidade</th><th>Pallets</th>
-            <th>Cliente</th><th>Destino</th><th>Endereço</th><th>Cidade</th>
-            <th>Transportadora</th><th>Tipo</th><th>Placa</th>
-            <th>Janela Carreg.</th><th>NF</th><th>Janela Entrega</th>
+            <th>OC</th><th>Pedido</th><th>Cliente</th><th>Destino</th><th>Endereço</th>
+            <th>Transportadora</th><th>Placa</th><th>Itens</th><th>Pallets</th>
+            <th>Janela Carreg.</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -1863,18 +1862,83 @@
   <!-- ===================== SOLICITAÇÃO DE PROGRAMAÇÃO DE VEÍCULO (COMERCIAL) ===================== -->
   <div class="page" id="pageSolicitacaoProgramacaoVeiculo">
     <div class="page-title">🚚 Comercial / Solicitação de Programação de Veículo</div>
-    <div class="page-subtitle">Peça a expedição de um item — a Expedição depois organiza e agrupa por destino</div>
+    <div class="page-subtitle">Peça a expedição de uma carga — a Expedição depois organiza e agrupa por destino</div>
 
     <div class="card">
-      <h2>Nova Solicitação</h2>
-      <form class="grid" id="formSolProgVeiculo">
+      <div class="toolbar">
+        <button type="button" class="btn" onclick="abrirModalSolicitacaoVeiculo()">➕ Registrar Solicitação</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Solicitações Abertas</h2>
+      <p class="toolbar-hint">Clique numa solicitação para ver os materiais dela.</p>
+      <div class="table-wrap">
+      <table id="tabelaSolProgVeiculo">
+        <thead>
+          <tr>
+            <th style="width:26px;"></th>
+            <th>OC</th><th>Pedido</th><th>Cliente</th><th>Destino</th><th>Cidade</th>
+            <th>Transportadora</th><th>Placa</th><th>Itens</th><th>Total Pallets</th>
+            <th>Janela Carreg.</th><th>Status</th>
+            <th class="actions-col">Ação</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div id="msgSolProgVeiculoVazio" class="empty-msg" style="display:none;">Nenhuma solicitação registrada ainda.</div>
+    </div>
+  </div>
+
+</main>
+
+</div>
+
+</div><!-- fim de #wrapperAppPrincipal -->
+
+<!-- ===================== MODAL: NOVA SOLICITAÇÃO DE PROGRAMAÇÃO DE VEÍCULO ===================== -->
+<div id="modalSolProgVeiculo" class="tela-auth" style="display:none; align-items:flex-start; overflow-y:auto; padding:30px 16px;">
+  <div class="auth-card" style="max-width:900px; text-align:left;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <h2 style="margin:0; color:#1f3a5f;">🚚 Solicitação de Programação de Veículo</h2>
+      <button type="button" class="btn danger" style="padding:6px 12px;" onclick="fecharModalSolicitacaoVeiculo()">✕ Fechar</button>
+    </div>
+    <p class="toolbar-hint" style="margin-top:0;">N° OC gerado automaticamente — segue a ordem das solicitações registradas.</p>
+
+    <form id="formSolProgVeiculo">
+      <div class="grid">
         <div>
-          <label>N° OC (Ordem de Coleta)</label>
-          <input type="text" id="spvOrdemColeta" placeholder="Ex: OC-4012">
+          <label>N° OC (automático)</label>
+          <input type="text" id="spvOrdemColeta" readonly style="background:#f3f4f6; font-weight:700;">
+        </div>
+        <div>
+          <label>N° Pedido</label>
+          <input type="text" id="spvPedido" placeholder="Ex: 10023">
+        </div>
+        <div>
+          <label>Destino (CD)</label>
+          <input type="text" id="spvDestino" list="datalistClientes" placeholder="Ex: SP19">
+        </div>
+        <div>
+          <label>Cliente</label>
+          <input type="text" id="spvCliente" placeholder="Preenchido automaticamente, ou digite">
+        </div>
+        <div>
+          <label>Endereço</label>
+          <input type="text" id="spvEndereco" placeholder="Preenchido automaticamente" readonly>
+        </div>
+        <div>
+          <label>Cidade</label>
+          <input type="text" id="spvCidade" placeholder="Preenchido automaticamente" readonly>
         </div>
         <div>
           <label>Janela de Carregamento</label>
           <input type="datetime-local" id="spvJanelaCarregamento">
+        </div>
+        <div>
+          <label>Janela de Entrega</label>
+          <input type="datetime-local" id="spvJanelaEntrega">
         </div>
         <div>
           <label>Tipo de Transporte</label>
@@ -1905,40 +1969,8 @@
           <input type="text" id="spvPlaca" placeholder="Opcional, se ainda não definida">
         </div>
         <div>
-          <label>Item</label>
-          <input type="text" id="spvItem" list="datalistMateriais" placeholder="Ex: FULL_B1" required>
-        </div>
-        <div>
-          <label>Quantidade</label>
-          <input type="number" id="spvQuantidade" min="0.01" step="any" placeholder="Ex: 50000" required>
-        </div>
-        <div>
-          <label>Pallets (estimado)</label>
-          <input type="text" id="spvPallets" placeholder="Calculado automaticamente" readonly>
-        </div>
-        <div>
-          <label>Cliente</label>
-          <input type="text" id="spvCliente" placeholder="Ex: MERCADO LIVRE">
-        </div>
-        <div>
-          <label>Destino (CD)</label>
-          <input type="text" id="spvDestino" list="datalistClientes" placeholder="Ex: SP19">
-        </div>
-        <div>
-          <label>Endereço</label>
-          <input type="text" id="spvEndereco" placeholder="Preenchido automaticamente" readonly>
-        </div>
-        <div>
-          <label>Cidade</label>
-          <input type="text" id="spvCidade" placeholder="Preenchido automaticamente" readonly>
-        </div>
-        <div>
           <label>NF</label>
           <input type="text" id="spvNf" placeholder="Opcional">
-        </div>
-        <div>
-          <label>Janela de Entrega</label>
-          <input type="datetime-local" id="spvJanelaEntrega">
         </div>
         <div id="campoSolicitanteSpvWrap">
           <label>Solicitante</label>
@@ -1948,37 +1980,40 @@
           <label>Solicitante</label>
           <input type="text" id="spvSolicitanteLogadoTexto" readonly style="background:#f3f4f6;">
         </div>
-        <div>
-          <button type="submit" class="btn">Registrar Solicitação</button>
-        </div>
-      </form>
-      <p class="toolbar-hint">O campo "Pallets" é calculado automaticamente com base na quantidade e no <em>Padrão de Paletização</em> cadastrado (Cadastros → Padrão de Paletização). Cadastre o item lá para essa previsão funcionar.</p>
-    </div>
-
-    <div class="card">
-      <h2>Solicitações Pendentes (aguardando Expedição organizar)</h2>
-      <div class="table-wrap">
-      <table id="tabelaSolProgVeiculo">
-        <thead>
-          <tr>
-            <th>OC</th><th>Janela Carreg.</th><th>Transp.</th><th>Tipo</th><th>Placa</th>
-            <th>Item</th><th>Quantidade</th><th>Pallets</th><th>Cliente</th><th>Destino</th>
-            <th>Endereço</th><th>Cidade</th><th>NF</th><th>Janela Entrega</th><th>Status</th>
-            <th class="actions-col">Ação</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
       </div>
-      <div id="msgSolProgVeiculoVazio" class="empty-msg" style="display:none;">Nenhuma solicitação registrada ainda.</div>
-    </div>
+
+      <h3 style="margin:20px 0 8px 0; color:#1f3a5f;">📦 Materiais para Envio</h3>
+      <div class="table-wrap">
+        <table id="tabelaMateriaisModalSpv">
+          <thead>
+            <tr><th>Item</th><th>Quantidade</th><th>Pallets (estimado)</th><th style="width:40px;"></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="toolbar" style="margin-top:8px;">
+        <button type="button" class="btn" style="background:#157a3d;" onclick="adicionarLinhaMaterialModalSpv()">➕ Adicionar Material</button>
+      </div>
+
+      <div class="dashboard-enderecos-grid" style="margin-top:16px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+        <div class="stat-card">
+          <div class="stat-valor" id="spvTotalPallets" style="font-size:22px;">0</div>
+          <div class="stat-label">📦 Total de Pallets</div>
+        </div>
+        <div class="stat-card saturacao">
+          <div class="stat-valor" id="spvTotalCarretas" style="font-size:22px;">0</div>
+          <div class="stat-label">🚛 Previsão de Carretas Necessárias</div>
+        </div>
+      </div>
+      <p class="toolbar-hint">Previsão de carretas calculada com base na capacidade do veículo escolhido (se "Própria") ou numa carreta padrão de <strong id="spvCapacidadeCarretaTexto">28</strong> pallets, caso contrário.</p>
+
+      <div class="toolbar" style="margin-top:14px;">
+        <button type="submit" class="btn">Registrar Solicitação</button>
+        <button type="button" class="btn" style="background:#94a3b8;" onclick="fecharModalSolicitacaoVeiculo()">Cancelar</button>
+      </div>
+    </form>
   </div>
-
-</main>
-
 </div>
-
-</div><!-- fim de #wrapperAppPrincipal -->
 
 <!-- ===================== TELA DE LOGIN ===================== -->
 <div id="telaLogin" class="tela-auth" style="display:none;">
@@ -2092,11 +2127,15 @@
       campoSequencia: 'campo_sequencia', campoStatus: 'campo_status'
     },
     clientes: { cd: 'cd', endereco: 'endereco', cidade: 'cidade', cnpj: 'cnpj', empresa: 'empresa' },
-    solicitacoes_programacao_veiculo: {
-      ordemColeta: 'ordem_coleta', janelaCarregamento: 'janela_carregamento', transportadora: 'transportadora',
-      veiculoId: 'veiculo_id', tipo: 'tipo', placa: 'placa', item: 'item', quantidade: 'quantidade', pallets: 'pallets',
-      cliente: 'cliente', destino: 'destino', endereco: 'endereco', cidade: 'cidade', nf: 'nf', janelaEntrega: 'janela_entrega',
+    solicitacoes_prog_veiculo_cabecalho: {
+      numeroOC: 'numero_oc', pedido: 'pedido', destino: 'destino', cliente: 'cliente',
+      endereco: 'endereco', cidade: 'cidade', janelaCarregamento: 'janela_carregamento',
+      tipoTransporte: 'tipo_transporte', transportadora: 'transportadora', veiculoId: 'veiculo_id',
+      tipo: 'tipo', placa: 'placa', nf: 'nf', janelaEntrega: 'janela_entrega',
       status: 'status', cargaId: 'carga_id', solicitante: 'solicitante'
+    },
+    solicitacoes_prog_veiculo_itens: {
+      solicitacaoId: 'solicitacao_id', item: 'item', quantidade: 'quantidade', pallets: 'pallets'
     }
   };
 
@@ -2141,11 +2180,35 @@
     if (error) console.error(`Supabase: erro ao remover de "${tabela}":`, error.message);
   }
 
+  // Busca TODAS as linhas de uma tabela, mesmo que passe de 1000 — o Supabase
+  // (na verdade o PostgREST por trás dele) limita cada consulta a um máximo de
+  // linhas por vez (1000 por padrão). Por isso buscamos em blocos ("páginas") de
+  // 1000 e vamos concatenando, até um bloco vir com menos que o tamanho pedido —
+  // sinal de que chegamos no fim da tabela.
   async function supaListar(tabela) {
     if (!supabaseConfigurado) return [];
-    const { data, error } = await supabaseClient.from(tabela).select('*');
-    if (error) { console.error(`Supabase: erro ao carregar "${tabela}":`, error.message); return []; }
-    return data.map(linha => paraJS(tabela, linha));
+    const TAMANHO_BLOCO = 1000;
+    let todasAsLinhas = [];
+    let inicio = 0;
+
+    while (true) {
+      const { data, error } = await supabaseClient
+        .from(tabela)
+        .select('*')
+        .range(inicio, inicio + TAMANHO_BLOCO - 1);
+
+      if (error) {
+        console.error(`Supabase: erro ao carregar "${tabela}":`, error.message);
+        break;
+      }
+      if (!data || data.length === 0) break;
+
+      todasAsLinhas = todasAsLinhas.concat(data);
+      if (data.length < TAMANHO_BLOCO) break; // último bloco — não tem mais nada depois
+      inicio += TAMANHO_BLOCO;
+    }
+
+    return todasAsLinhas.map(linha => paraJS(tabela, linha));
   }
 
   // Carrega todas as tabelas do Supabase para o estado em memória ao abrir a página.
@@ -2154,13 +2217,13 @@
   async function carregarTudoDoSupabase() {
     if (!supabaseConfigurado) return;
     try {
-      const [u, en, mat, mov, solVer, fila, prod, apont, solMat, veic, cargas, itens, viag, seqRaw, seqMap, cli, solProgVeic] = await Promise.all([
+      const [u, en, mat, mov, solVer, fila, prod, apont, solMat, veic, cargas, itens, viag, seqRaw, seqMap, cli, solProgVeicCab, solProgVeicItens] = await Promise.all([
         supaListar('usuarios'), supaListar('enderecos'), supaListar('materiais'), supaListar('movimentacoes'),
         supaListar('solicitacoes_verificacao'), supaListar('fila_solicitacoes'), supaListar('producoes'),
         supaListar('apontamentos_producao'), supaListar('solicitacoes_material'), supaListar('veiculos'),
         supaListar('cargas_programadas'), supaListar('itens_carga'), supaListar('viagens'),
         supaListar('sequenciamento_producao_raw'), supaListar('sequenciamento_producao_mapeamento'),
-        supaListar('clientes'), supaListar('solicitacoes_programacao_veiculo')
+        supaListar('clientes'), supaListar('solicitacoes_prog_veiculo_cabecalho'), supaListar('solicitacoes_prog_veiculo_itens')
       ]);
       usuarios = u; enderecos = en; materiais = mat; movimentacoes = mov;
       solicitacoes = solVer; filaSolicitacoes = fila; producoes = prod;
@@ -2169,7 +2232,8 @@
       sequenciamentoRaw = seqRaw;
       mapeamentoSequenciamento = seqMap[0] || {};
       clientes = cli;
-      solicitacoesProgramacaoVeiculo = solProgVeic;
+      solicitacoesProgVeiculoCabecalho = solProgVeicCab;
+      itensSolicitacaoProgVeiculo = solProgVeicItens;
     } catch (err) {
       console.error('Supabase: falha ao carregar dados iniciais:', err.message);
     }
@@ -2529,7 +2593,8 @@
   let sequenciamentoRaw = [];  // { id, dados: {...linha original da tabela "procs"...}, sincronizadoEm }
   let mapeamentoSequenciamento = {}; // { campoProduto, campoDescricao, campoDataInicio, campoDataFim, campoQuantidade, campoMaquina, campoSequencia, campoStatus }
   let clientes = []; // { id, cd, endereco, cnpj, empresa }
-  let solicitacoesProgramacaoVeiculo = []; // { id, ordemColeta, janelaCarregamento, transportadora, tipo, placa, item, quantidade, pallets, cliente, destino, endereco, nf, janelaEntrega, status, cargaId, solicitante }
+  let solicitacoesProgVeiculoCabecalho = []; // { id, numeroOC, pedido, destino, cliente, endereco, cidade, janelaCarregamento, tipoTransporte, transportadora, veiculoId, tipo, placa, nf, janelaEntrega, status, cargaId, solicitante }
+  let itensSolicitacaoProgVeiculo = []; // { id, solicitacaoId, item, quantidade, pallets }
   let viagens = [];       // { id, veiculoId, motorista, dataHora, previsaoChegada, origem, destino, status, observacoes }
   let enderecos = [];     // { id, codigo, rua, bloco, nivel, capacidadeKg, status, observacao, descricao }
   let materiais = [];     // { id, codigo, descricao, pesoUnitarioKg, familia, unidade, estoqueMinimo, estoqueMaximo, ativo, pecasPorPct, pesoPacoteKg, amarracao, qtdAltura, qtdPctPorPallet, fracaoPct, totalPct, qtdTotalPc }
@@ -2809,20 +2874,105 @@
   }
 
   // ============== COMERCIAL > SOLICITAÇÃO DE PROGRAMAÇÃO DE VEÍCULO ==============
-  function atualizarPalletsSpv() {
-    const item = document.getElementById('spvItem').value;
-    const quantidade = parseFloat(document.getElementById('spvQuantidade').value);
-    const pallets = calcularPalletsEstimados(item, quantidade);
-    document.getElementById('spvPallets').value = pallets !== null ? `${pallets} pallet(s)` : '';
+  const CAPACIDADE_PADRAO_CARRETA_PALLETS = 28; // usado quando não há veículo próprio escolhido
+  let idsLinhasMateriaisModalSpv = [];
+
+  // Gera o próximo número de OC sozinho (ex: OC-0001, OC-0002...), olhando o maior já usado
+  function gerarProximoNumeroOC() {
+    let maiorNumero = 0;
+    solicitacoesProgVeiculoCabecalho.forEach(s => {
+      const m = String(s.numeroOC || '').match(/(\d+)/);
+      if (m) maiorNumero = Math.max(maiorNumero, parseInt(m[1], 10));
+    });
+    return 'OC-' + String(maiorNumero + 1).padStart(4, '0');
   }
-  document.getElementById('spvItem').addEventListener('input', atualizarPalletsSpv);
-  document.getElementById('spvQuantidade').addEventListener('input', atualizarPalletsSpv);
+
+  function abrirModalSolicitacaoVeiculo() {
+    document.getElementById('formSolProgVeiculo').reset();
+    document.getElementById('spvOrdemColeta').value = gerarProximoNumeroOC();
+    document.getElementById('spvTipo').value = 'Dedicado';
+    document.getElementById('spvTipoTransporte').value = 'Transportadora';
+    atualizarCampoVeiculoSpv();
+    idsLinhasMateriaisModalSpv = [crypto.randomUUID()];
+    renderLinhasMateriaisModalSpv();
+    atualizarTotaisModalSpv();
+    aplicarCampoSolicitanteGenerico('campoSolicitanteSpvWrap', 'campoSolicitanteSpvLogado', 'spvSolicitanteLogadoTexto');
+    document.getElementById('modalSolProgVeiculo').style.display = 'flex';
+  }
+
+  function fecharModalSolicitacaoVeiculo() {
+    document.getElementById('modalSolProgVeiculo').style.display = 'none';
+  }
+
+  function criarLinhaMaterialModalSpvHtml(id) {
+    return `
+      <tr id="linhaMaterialSpv_${id}">
+        <td><input type="text" id="spvModalItem_${id}" list="datalistMateriais" placeholder="Ex: FULL_B1" oninput="atualizarPalletsLinhaModalSpv('${id}')" style="width:100%;"></td>
+        <td><input type="number" id="spvModalQtd_${id}" min="0.01" step="any" placeholder="Ex: 50000" oninput="atualizarPalletsLinhaModalSpv('${id}')" style="width:100%;"></td>
+        <td><input type="text" id="spvModalPallets_${id}" readonly placeholder="-" style="width:100%; background:#f3f4f6;"></td>
+        <td><button type="button" class="btn danger" style="padding:4px 8px;" onclick="removerLinhaMaterialModalSpv('${id}')">✕</button></td>
+      </tr>
+    `;
+  }
+
+  // Usado só na abertura do modal (reset completo) — reconstrói a tabela inteira
+  function renderLinhasMateriaisModalSpv() {
+    const tbody = document.querySelector('#tabelaMateriaisModalSpv tbody');
+    if (!tbody) return;
+    tbody.innerHTML = idsLinhasMateriaisModalSpv.map(criarLinhaMaterialModalSpvHtml).join('');
+  }
+
+  // Só ACRESCENTA a linha nova no fim da tabela — não reconstrói as demais, senão
+  // apagaria o que já tinha sido digitado nelas.
+  function adicionarLinhaMaterialModalSpv() {
+    const novoId = crypto.randomUUID();
+    idsLinhasMateriaisModalSpv.push(novoId);
+    const tbody = document.querySelector('#tabelaMateriaisModalSpv tbody');
+    if (tbody) tbody.insertAdjacentHTML('beforeend', criarLinhaMaterialModalSpvHtml(novoId));
+  }
+
+  function removerLinhaMaterialModalSpv(id) {
+    idsLinhasMateriaisModalSpv = idsLinhasMateriaisModalSpv.filter(x => x !== id);
+    const linha = document.getElementById('linhaMaterialSpv_' + id);
+    if (linha) linha.remove();
+    if (idsLinhasMateriaisModalSpv.length === 0) adicionarLinhaMaterialModalSpv();
+    atualizarTotaisModalSpv();
+  }
+
+  function atualizarPalletsLinhaModalSpv(id) {
+    const item = document.getElementById('spvModalItem_' + id).value;
+    const quantidade = parseFloat(document.getElementById('spvModalQtd_' + id).value);
+    const pallets = calcularPalletsEstimados(item, quantidade);
+    document.getElementById('spvModalPallets_' + id).value = pallets !== null ? pallets : '';
+    atualizarTotaisModalSpv();
+  }
+
+  // Soma os pallets de todas as linhas e estima quantas carretas são necessárias —
+  // usa a capacidade do veículo escolhido (se "Própria"), senão um padrão configurável.
+  function atualizarTotaisModalSpv() {
+    let totalPallets = 0;
+    idsLinhasMateriaisModalSpv.forEach(id => {
+      const el = document.getElementById('spvModalPallets_' + id);
+      if (el && el.value) totalPallets += parseFloat(el.value) || 0;
+    });
+    document.getElementById('spvTotalPallets').textContent = formatarQtd(totalPallets);
+
+    const ehPropria = document.getElementById('spvTipoTransporte').value === 'Propria';
+    const veiculo = ehPropria ? veiculos.find(v => String(v.id) === String(document.getElementById('spvVeiculoProprio').value)) : null;
+    const capacidade = (veiculo && veiculo.capacidadePallets) ? veiculo.capacidadePallets : CAPACIDADE_PADRAO_CARRETA_PALLETS;
+    document.getElementById('spvCapacidadeCarretaTexto').textContent = formatarQtd(capacidade);
+    const carretas = totalPallets > 0 ? Math.ceil(totalPallets / capacidade) : 0;
+    document.getElementById('spvTotalCarretas').textContent = carretas;
+  }
 
   function atualizarEnderecoSpv() {
     const destino = document.getElementById('spvDestino').value.trim().toUpperCase();
     const cliente = clientes.find(c => c.cd === destino);
     document.getElementById('spvEndereco').value = cliente ? (cliente.endereco || '') : '';
     document.getElementById('spvCidade').value = cliente ? (cliente.cidade || '') : '';
+    if (cliente && cliente.empresa && !document.getElementById('spvCliente').value.trim()) {
+      document.getElementById('spvCliente').value = cliente.empresa;
+    }
   }
   document.getElementById('spvDestino').addEventListener('input', atualizarEnderecoSpv);
 
@@ -2839,6 +2989,7 @@
       placaInput.readOnly = false;
       placaInput.value = '';
     }
+    atualizarTotaisModalSpv();
   }
 
   function atualizarPlacaPorVeiculoSpv() {
@@ -2851,14 +3002,25 @@
       placaInput.value = '';
       placaInput.readOnly = false;
     }
+    atualizarTotaisModalSpv();
   }
 
   document.getElementById('formSolProgVeiculo').addEventListener('submit', e => {
     e.preventDefault();
-    const item = document.getElementById('spvItem').value.trim().toUpperCase();
-    const quantidade = parseFloat(document.getElementById('spvQuantidade').value);
     const destino = document.getElementById('spvDestino').value.trim().toUpperCase();
-    if (!item || isNaN(quantidade) || quantidade <= 0 || !destino) return;
+    if (!destino) { alert('Informe o Destino (CD).'); return; }
+
+    // Só considera linhas realmente preenchidas (ignora linhas de material em branco)
+    const itensPreenchidos = idsLinhasMateriaisModalSpv.map(id => {
+      const item = document.getElementById('spvModalItem_' + id).value.trim().toUpperCase();
+      const quantidade = parseFloat(document.getElementById('spvModalQtd_' + id).value);
+      return { item, quantidade, pallets: calcularPalletsEstimados(item, quantidade) };
+    }).filter(l => l.item && !isNaN(l.quantidade) && l.quantidade > 0);
+
+    if (itensPreenchidos.length === 0) {
+      alert('Adicione ao menos um material com quantidade válida antes de registrar.');
+      return;
+    }
 
     const ehPropria = document.getElementById('spvTipoTransporte').value === 'Propria';
     if (ehPropria && !document.getElementById('spvVeiculoProprio').value) {
@@ -2870,39 +3032,44 @@
     const jc = document.getElementById('spvJanelaCarregamento').value;
     const je = document.getElementById('spvJanelaEntrega').value;
 
-    const nova = {
+    const novoCabecalho = {
       id: crypto.randomUUID(),
-      ordemColeta: document.getElementById('spvOrdemColeta').value.trim(),
+      numeroOC: document.getElementById('spvOrdemColeta').value.trim(),
+      pedido: document.getElementById('spvPedido').value.trim(),
+      destino,
+      cliente: document.getElementById('spvCliente').value.trim(),
+      endereco: document.getElementById('spvEndereco').value.trim(),
+      cidade: document.getElementById('spvCidade').value.trim(),
       janelaCarregamento: jc || null,
+      tipoTransporte: document.getElementById('spvTipoTransporte').value,
       transportadora: ehPropria ? 'PRÓPRIA' : document.getElementById('spvTransportadora').value.trim(),
       veiculoId: ehPropria ? document.getElementById('spvVeiculoProprio').value : null,
       tipo: document.getElementById('spvTipo').value,
       placa: document.getElementById('spvPlaca').value.trim().toUpperCase(),
-      item,
-      quantidade,
-      pallets: calcularPalletsEstimados(item, quantidade),
-      cliente: document.getElementById('spvCliente').value.trim(),
-      destino,
-      endereco: document.getElementById('spvEndereco').value.trim(),
-      cidade: document.getElementById('spvCidade').value.trim(),
       nf: document.getElementById('spvNf').value.trim(),
       janelaEntrega: je || null,
       status: 'Pendente',
       cargaId: null,
       solicitante
     };
-    solicitacoesProgramacaoVeiculo.push(nova);
-    supaInserir('solicitacoes_programacao_veiculo', nova);
+    solicitacoesProgVeiculoCabecalho.push(novoCabecalho);
+    supaInserir('solicitacoes_prog_veiculo_cabecalho', novoCabecalho);
 
-    document.getElementById('formSolProgVeiculo').reset();
-    document.getElementById('spvTipo').value = 'Dedicado';
-    atualizarCampoVeiculoSpv();
+    itensPreenchidos.forEach(l => {
+      const novoItem = { id: crypto.randomUUID(), solicitacaoId: novoCabecalho.id, item: l.item, quantidade: l.quantidade, pallets: l.pallets };
+      itensSolicitacaoProgVeiculo.push(novoItem);
+      supaInserir('solicitacoes_prog_veiculo_itens', novoItem);
+    });
+
+    fecharModalSolicitacaoVeiculo();
     renderTudo();
+    alert(`Solicitação ${novoCabecalho.numeroOC} registrada com ${itensPreenchidos.length} item(ns)!`);
   });
 
   function removerSolProgVeiculo(id) {
-    solicitacoesProgramacaoVeiculo = solicitacoesProgramacaoVeiculo.filter(s => String(s.id) !== String(id));
-    supaRemover('solicitacoes_programacao_veiculo', id);
+    solicitacoesProgVeiculoCabecalho = solicitacoesProgVeiculoCabecalho.filter(s => String(s.id) !== String(id));
+    itensSolicitacaoProgVeiculo = itensSolicitacaoProgVeiculo.filter(it => String(it.solicitacaoId) !== String(id));
+    supaRemover('solicitacoes_prog_veiculo_cabecalho', id); // o "on delete cascade" já apaga os itens no banco
     renderTudo();
   }
 
@@ -2911,10 +3078,10 @@
     const msg = document.getElementById('msgSolProgVeiculoVazio');
     if (!tbody || !msg) return;
 
-    const pendentes = solicitacoesProgramacaoVeiculo.filter(s => s.status === 'Pendente');
+    const abertas = solicitacoesProgVeiculoCabecalho.filter(s => s.status === 'Pendente');
 
     tbody.innerHTML = '';
-    if (pendentes.length === 0) {
+    if (abertas.length === 0) {
       msg.style.display = 'block';
       document.getElementById('tabelaSolProgVeiculo').style.display = 'none';
       return;
@@ -2922,27 +3089,46 @@
     msg.style.display = 'none';
     document.getElementById('tabelaSolProgVeiculo').style.display = 'table';
 
-    pendentes.forEach(s => {
+    abertas.forEach(s => {
+      const itensDaSolicitacao = itensSolicitacaoProgVeiculo.filter(it => String(it.solicitacaoId) === String(s.id));
+      const totalPallets = itensDaSolicitacao.reduce((soma, it) => soma + (it.pallets || 0), 0);
+
       const tr = document.createElement('tr');
+      tr.className = 'linha-expansivel';
+      tr.setAttribute('onclick', `toggleDetalheApontamento('spv_${s.id}')`);
       tr.innerHTML = `
-        <td>${s.ordemColeta || '-'}</td>
-        <td>${s.janelaCarregamento ? formatarDataHoraBR(s.janelaCarregamento) : '-'}</td>
-        <td>${s.transportadora || '-'}</td>
-        <td>${s.tipo || '-'}</td>
-        <td>${s.placa || '-'}</td>
-        <td><span class="badge">${s.item}</span></td>
-        <td>${formatarQtd(s.quantidade)}</td>
-        <td>${s.pallets ?? '-'}</td>
+        <td><span class="expand-arrow" id="seta_spv_${s.id}">▸</span></td>
+        <td><span class="badge">${s.numeroOC}</span></td>
+        <td>${s.pedido || '-'}</td>
         <td>${s.cliente || '-'}</td>
         <td>${s.destino}</td>
-        <td>${s.endereco || '-'}</td>
         <td>${s.cidade || '-'}</td>
-        <td>${s.nf || '-'}</td>
-        <td>${s.janelaEntrega ? formatarDataHoraBR(s.janelaEntrega) : '-'}</td>
+        <td>${s.transportadora || '-'}</td>
+        <td>${s.placa || '-'}</td>
+        <td>${itensDaSolicitacao.length}</td>
+        <td>${formatarQtd(totalPallets)}</td>
+        <td>${s.janelaCarregamento ? formatarDataHoraBR(s.janelaCarregamento) : '-'}</td>
         <td>${s.status}</td>
-        <td class="actions-col"><button class="btn danger" onclick="removerSolProgVeiculo('${s.id}')">✕</button></td>
+        <td class="actions-col"><button class="btn danger" onclick="event.stopPropagation(); removerSolProgVeiculo('${s.id}')">✕</button></td>
       `;
       tbody.appendChild(tr);
+
+      const trDetalhe = document.createElement('tr');
+      trDetalhe.className = 'linha-detalhe';
+      trDetalhe.id = 'detalhe_spv_' + s.id;
+      trDetalhe.style.display = 'none';
+      const linhasItens = itensDaSolicitacao.map(it => `
+        <tr><td><span class="badge">${it.item}</span></td><td>${formatarQtd(it.quantidade)}</td><td>${it.pallets ?? '-'}</td></tr>
+      `).join('') || '<tr><td colspan="3" class="empty-msg">Nenhum item.</td></tr>';
+      trDetalhe.innerHTML = `
+        <td colspan="13">
+          <table>
+            <thead><tr><th>Item</th><th>Quantidade</th><th>Pallets</th></tr></thead>
+            <tbody>${linhasItens}</tbody>
+          </table>
+        </td>
+      `;
+      tbody.appendChild(trDetalhe);
     });
   }
 
@@ -3526,7 +3712,7 @@
     const msg = document.getElementById('msgSolPendentesExpedicaoVazio');
     if (!tbody || !msg) return;
 
-    const pendentes = solicitacoesProgramacaoVeiculo.filter(s => s.status === 'Pendente');
+    const pendentes = solicitacoesProgVeiculoCabecalho.filter(s => s.status === 'Pendente');
 
     tbody.innerHTML = '';
     if (pendentes.length === 0) {
@@ -3552,40 +3738,41 @@
     });
 
     cidadesOrdenadas.forEach(cidade => {
-      const itensDaCidade = porCidade[cidade];
-      const totalPallets = itensDaCidade.reduce((soma, s) => soma + (s.pallets || 0), 0);
+      const solicitacoesDaCidade = porCidade[cidade];
+      const totalPalletsCidade = solicitacoesDaCidade.reduce((soma, s) => {
+        const itens = itensSolicitacaoProgVeiculo.filter(it => String(it.solicitacaoId) === String(s.id));
+        return soma + itens.reduce((s2, it) => s2 + (it.pallets || 0), 0);
+      }, 0);
       const idGrupo = slugify(cidade);
 
       const trGrupo = document.createElement('tr');
       trGrupo.innerHTML = `
-        <td colspan="15" style="background:#eef2f7; font-weight:700; padding:8px 12px;">
+        <td colspan="11" style="background:#eef2f7; font-weight:700; padding:8px 12px;">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
             <input type="checkbox" onchange="marcarTodosDaCidade('${idGrupo}', this.checked)">
-            🏙️ ${cidade} — ${itensDaCidade.length} solicitação(ões), ${formatarQtd(totalPallets)} pallet(s) no total
+            🏙️ ${cidade} — ${solicitacoesDaCidade.length} solicitação(ões), ${formatarQtd(totalPalletsCidade)} pallet(s) no total
           </label>
         </td>
       `;
       tbody.appendChild(trGrupo);
 
-      itensDaCidade.forEach(s => {
+      solicitacoesDaCidade.forEach(s => {
+        const itensDaSolicitacao = itensSolicitacaoProgVeiculo.filter(it => String(it.solicitacaoId) === String(s.id));
+        const totalPallets = itensDaSolicitacao.reduce((soma, it) => soma + (it.pallets || 0), 0);
         const tr = document.createElement('tr');
         tr.className = 'grupo-cidade-' + idGrupo;
         tr.innerHTML = `
           <td style="text-align:center;"><input type="checkbox" class="chkSolPendenteExpedicao" data-id="${s.id}"></td>
-          <td>${s.ordemColeta || '-'}</td>
-          <td><span class="badge">${s.item}</span></td>
-          <td>${formatarQtd(s.quantidade)}</td>
-          <td>${s.pallets ?? '-'}</td>
+          <td><span class="badge">${s.numeroOC}</span></td>
+          <td>${s.pedido || '-'}</td>
           <td>${s.cliente || '-'}</td>
           <td>${s.destino}</td>
           <td>${s.endereco || '-'}</td>
-          <td>${s.cidade || '-'}</td>
           <td>${s.transportadora || '-'}</td>
-          <td>${s.tipo || '-'}</td>
           <td>${s.placa || '-'}</td>
+          <td>${itensDaSolicitacao.length}</td>
+          <td>${formatarQtd(totalPallets)}</td>
           <td>${s.janelaCarregamento ? formatarDataHoraBR(s.janelaCarregamento) : '-'}</td>
-          <td>${s.nf || '-'}</td>
-          <td>${s.janelaEntrega ? formatarDataHoraBR(s.janelaEntrega) : '-'}</td>
         `;
         tbody.appendChild(tr);
       });
@@ -3598,11 +3785,11 @@
     });
   }
 
-  // Junta as solicitações marcadas numa única Carga Programada (cria a carga + os itens,
-  // e marca as solicitações de origem como "Programada" para saírem da lista de pendentes)
+  // Junta as solicitações marcadas numa única Carga Programada (cria a carga + os itens de
+  // TODAS as solicitações marcadas, e marca cada uma como "Programada" para sair da lista)
   function consolidarSolicitacoesEmCarga() {
     const marcadas = [...document.querySelectorAll('.chkSolPendenteExpedicao:checked')].map(chk =>
-      solicitacoesProgramacaoVeiculo.find(s => String(s.id) === chk.dataset.id)
+      solicitacoesProgVeiculoCabecalho.find(s => String(s.id) === chk.dataset.id)
     ).filter(Boolean);
 
     if (marcadas.length === 0) {
@@ -3611,14 +3798,10 @@
     }
 
     const base = marcadas[0];
-    let numeroOC = base.ordemColeta || '';
-    if (!numeroOC) {
-      numeroOC = prompt('Nenhuma das solicitações tem OC definida. Informe o N° OC para esta carga:', '') || '';
-      if (!numeroOC) return;
-    }
+    let numeroOC = base.numeroOC || '';
     if (cargasProgramadas.some(c => c.numeroOC === numeroOC)) {
-      alert(`Já existe uma carga programada com a OC "${numeroOC}". Ajuste a OC nas solicitações ou remova/edite a carga existente.`);
-      return;
+      numeroOC = prompt(`Já existe uma carga programada com a OC "${numeroOC}". Informe outro N° OC para esta carga:`, '') || '';
+      if (!numeroOC) return;
     }
 
     const veiculoBase = base.veiculoId ? veiculos.find(v => String(v.id) === String(base.veiculoId)) : null;
@@ -3627,7 +3810,7 @@
       id: crypto.randomUUID(),
       numeroOC,
       janelaCarregamento: base.janelaCarregamento || new Date().toISOString().slice(0, 16),
-      modalidade: marcadas.length > 1 ? 'Fracionado' : 'Dedicado',
+      modalidade: (marcadas.length > 1 || itensSolicitacaoProgVeiculo.filter(it => String(it.solicitacaoId) === String(base.id)).length > 1) ? 'Fracionado' : (base.tipo || 'Dedicado'),
       transportadora: base.transportadora || '?',
       tipoVeiculo: veiculoBase ? (veiculoBase.modelo || '') : '',
       placa: base.placa || (veiculoBase ? veiculoBase.placa : ''),
@@ -3637,29 +3820,34 @@
     cargasProgramadas.push(novaCarga);
     supaInserir('cargas_programadas', novaCarga);
 
+    let totalItensAdicionados = 0;
     marcadas.forEach(s => {
-      const novoItem = {
-        id: crypto.randomUUID(),
-        cargaId: novaCarga.id,
-        item: s.item,
-        quantidade: s.quantidade,
-        quantidadePallets: s.pallets || 0,
-        cliente: s.cliente,
-        destino: s.destino,
-        nf: s.nf,
-        janelaEntrega: s.janelaEntrega,
-        status: 'Programado'
-      };
-      itensCarga.push(novoItem);
-      supaInserir('itens_carga', novoItem);
+      const itensDaSolicitacao = itensSolicitacaoProgVeiculo.filter(it => String(it.solicitacaoId) === String(s.id));
+      itensDaSolicitacao.forEach(it => {
+        const novoItem = {
+          id: crypto.randomUUID(),
+          cargaId: novaCarga.id,
+          item: it.item,
+          quantidade: it.quantidade,
+          quantidadePallets: it.pallets || 0,
+          cliente: s.cliente,
+          destino: s.destino,
+          nf: s.nf,
+          janelaEntrega: s.janelaEntrega,
+          status: 'Programado'
+        };
+        itensCarga.push(novoItem);
+        supaInserir('itens_carga', novoItem);
+        totalItensAdicionados++;
+      });
 
       s.status = 'Programada';
       s.cargaId = novaCarga.id;
-      supaAtualizar('solicitacoes_programacao_veiculo', s.id, { status: 'Programada', cargaId: novaCarga.id });
+      supaAtualizar('solicitacoes_prog_veiculo_cabecalho', s.id, { status: 'Programada', cargaId: novaCarga.id });
     });
 
     renderTudo();
-    alert(`Carga ${numeroOC} criada com ${marcadas.length} item(ns)! Veja em "Cargas Programadas" logo abaixo.`);
+    alert(`Carga ${numeroOC} criada com ${totalItensAdicionados} item(ns) de ${marcadas.length} solicitação(ões)! Veja em "Cargas Programadas" logo abaixo.`);
   }
 
   function renderCargasProgramadas() {
