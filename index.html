@@ -1057,8 +1057,12 @@
       </div>
     </div>
 
-    <div class="nav-item" id="navSolicitacoes">
-      <a href="#" onclick="showView(event, 'solicitacoes', 'navSolicitacoes')">Solicitações</a>
+    <div class="nav-item" id="navGroupSolicitacoes">
+      <span>Solicitações</span>
+      <div class="dropdown">
+        <a href="#" onclick="showView(event, 'separacao-pa', 'navGroupSolicitacoes')">Separação de Estoque PA</a>
+        <a href="#" onclick="showView(event, 'separacao-mp', 'navGroupSolicitacoes')">Separação de Estoque MP</a>
+      </div>
     </div>
 
     <div class="nav-item" id="navMovimentacoes">
@@ -1473,17 +1477,55 @@
 
     </div>
 
-    <!-- View: Solicitações -->
-    <div class="view" id="view-solicitacoes">
+    <!-- View: Solicitações > Separação de Estoque PA -->
+    <div class="view" id="view-separacao-pa">
       <div class="dash-header">
         <div>
-          <div class="breadcrumb">SOLICITAÇÕES</div>
-          <h1>Solicitações</h1>
+          <div class="breadcrumb">SOLICITAÇÕES / SEPARAÇÃO PA</div>
+          <h1>Separação de Estoque — Produto Acabado</h1>
+          <p class="subtitle">Solicitações de separação com sugestão de lote por FIFO</p>
+        </div>
+        <div class="dash-actions">
+          <button class="action-btn primary" onclick="openNovaSolicitacaoModal('pa')">Nova Solicitação de Separação</button>
         </div>
       </div>
-      <div class="placeholder-panel">
-        <h1>Solicitações</h1>
-        <p>Conteúdo a definir.</p>
+
+      <div class="kpi-grid" id="sepKpiGrid-pa"></div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Solicitações</h2>
+          <span class="fifo-tag" id="sepCount-pa"></span>
+        </div>
+        <div class="table-wrap" id="sepListWrap-pa">
+          <div class="empty-state">Nenhuma solicitação ainda.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View: Solicitações > Separação de Estoque MP -->
+    <div class="view" id="view-separacao-mp">
+      <div class="dash-header">
+        <div>
+          <div class="breadcrumb">SOLICITAÇÕES / SEPARAÇÃO MP</div>
+          <h1>Separação de Estoque — Matéria Prima</h1>
+          <p class="subtitle">Solicitações de separação com sugestão de lote por FIFO</p>
+        </div>
+        <div class="dash-actions">
+          <button class="action-btn primary" onclick="openNovaSolicitacaoModal('mp')">Nova Solicitação de Separação</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid" id="sepKpiGrid-mp"></div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Solicitações</h2>
+          <span class="fifo-tag" id="sepCount-mp"></span>
+        </div>
+        <div class="table-wrap" id="sepListWrap-mp">
+          <div class="empty-state">Nenhuma solicitação ainda.</div>
+        </div>
       </div>
     </div>
 
@@ -1663,6 +1705,73 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- Modal: Nova Solicitação de Separação -->
+  <div class="modal-overlay" id="novaSolicitacaoModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2 id="novaSolicitacaoTitle">Nova Solicitação de Separação</h2>
+        <button class="modal-close" onclick="closeNovaSolicitacaoModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Solicitante</label>
+          <input type="text" id="novaSolSolicitante" placeholder="Nome de quem está solicitando">
+        </div>
+        <div class="form-group">
+          <label>Destino (pedido de venda, ordem de produção, etc.)</label>
+          <input type="text" id="novaSolDestino" placeholder="Ex: Pedido #4821">
+        </div>
+        <div class="form-group">
+          <label>Prioridade</label>
+          <select id="novaSolPrioridade">
+            <option value="Baixa">Baixa</option>
+            <option value="Normal" selected>Normal</option>
+            <option value="Alta">Alta</option>
+            <option value="Urgente">Urgente</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Observação</label>
+          <input type="text" id="novaSolObservacao" placeholder="Opcional">
+        </div>
+
+        <div class="table-actions">
+          <span class="file-name">Itens a separar</span>
+          <div class="btn-group">
+            <button class="small-btn" onclick="addItemSolicitacao()">+ Adicionar item</button>
+          </div>
+        </div>
+        <div class="table-wrap" id="novaSolItensWrap">
+          <div class="empty-state">Nenhum item adicionado.</div>
+        </div>
+
+        <button class="small-btn save" style="width: 100%; margin-top: 14px;" onclick="handleCriarSolicitacao()">Criar Solicitação</button>
+        <div id="novaSolMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Detalhes da Solicitação de Separação -->
+  <div class="modal-overlay" id="detalheSolicitacaoModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div>
+          <h2 id="detalheSolTitle">Solicitação</h2>
+          <p class="subtitle" style="margin-top: 4px;" id="detalheSolSubtitle"></p>
+        </div>
+        <button class="modal-close" onclick="closeDetalheSolicitacao()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="table-wrap" id="detalheSolItensWrap">
+          <div class="empty-state">Carregando itens…</div>
+        </div>
+
+        <div class="dash-actions" style="margin-top: 16px; justify-content: flex-start;" id="detalheSolAcoes"></div>
+        <div id="detalheSolMsg"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Modal de Relatório - Verificar Saldo -->
@@ -1989,13 +2098,20 @@
         .from('usuarios')
         .select('id, nome, email, role, must_change_password')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Erro ao buscar perfil do usuário:', error);
         currentProfile = null;
+        document.getElementById('loginErrorMsg').textContent =
+          'Login OK, mas houve um erro ao buscar seu perfil: ' + error.message;
+      } else if (!perfil) {
+        currentProfile = null;
+        document.getElementById('loginErrorMsg').textContent =
+          'Login OK, mas não existe perfil na tabela "usuarios" para este usuário (ID ' + session.user.id + '). Verifique se o campo "id" dessa linha é exatamente igual ao ID em Authentication › Users.';
       } else {
         currentProfile = perfil;
+        document.getElementById('loginErrorMsg').textContent = '';
       }
 
       updateAuthUI();
@@ -2041,7 +2157,10 @@
 
       const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) {
-        errEl.textContent = 'E-mail ou senha inválidos.';
+        // Mostra a mensagem real do Supabase (ex: "Email not confirmed",
+        // "Invalid login credentials") em vez de esconder o motivo.
+        errEl.textContent = 'Falha no login: ' + error.message;
+        console.error('Erro de login:', error);
         return;
       }
 
@@ -2198,6 +2317,419 @@
 
       msgEl.innerHTML = '<span style="color:#6bc55a; font-size:11px;">Salvo ✓</span>';
       setTimeout(() => { msgEl.innerHTML = ''; }, 2000);
+    }
+
+    // =========================================================
+    // SOLICITAÇÕES DE SEPARAÇÃO (WMS) — Produto Acabado / Matéria Prima
+    // =========================================================
+    const solicitacoesData = { pa: [], mp: [] };
+    let novaSolItens = [];
+    let novaSolScope = 'pa';
+    let detalheSolScope = null;
+    let detalheSolId = null;
+
+    function areaLabel(scope) {
+      return scope === 'mp' ? 'materia_prima' : 'produto_acabado';
+    }
+
+    function isHoje(dataStr) {
+      if (!dataStr) return false;
+      const d = new Date(dataStr);
+      const hoje = new Date();
+      return d.toDateString() === hoje.toDateString();
+    }
+
+    // ---- Nova Solicitação ----
+    function openNovaSolicitacaoModal(scope) {
+      if (!requireLogin()) return;
+      novaSolScope = scope;
+      document.getElementById('novaSolicitacaoTitle').textContent =
+        'Nova Solicitação de Separação — ' + (scope === 'mp' ? 'Matéria Prima' : 'Produto Acabado');
+      document.getElementById('novaSolSolicitante').value = currentProfile ? (currentProfile.nome || currentProfile.email || '') : '';
+      document.getElementById('novaSolDestino').value = '';
+      document.getElementById('novaSolObservacao').value = '';
+      document.getElementById('novaSolPrioridade').value = 'Normal';
+      novaSolItens = [];
+      renderNovaSolItens();
+      document.getElementById('novaSolMsg').innerHTML = '';
+      document.getElementById('novaSolicitacaoModal').classList.add('open');
+    }
+
+    function closeNovaSolicitacaoModal() {
+      document.getElementById('novaSolicitacaoModal').classList.remove('open');
+    }
+
+    function addItemSolicitacao() {
+      novaSolItens.push({ codigo: '', quantidade: '' });
+      renderNovaSolItens();
+    }
+
+    function removeItemSolicitacao(idx) {
+      novaSolItens.splice(idx, 1);
+      renderNovaSolItens();
+    }
+
+    function updateItemSolicitacao(idx, field, value) {
+      novaSolItens[idx][field] = value;
+    }
+
+    function renderNovaSolItens() {
+      const wrap = document.getElementById('novaSolItensWrap');
+      if (!novaSolItens.length) {
+        wrap.innerHTML = '<div class="empty-state">Nenhum item adicionado.</div>';
+        return;
+      }
+      let html = '<table class="edit-table"><thead><tr><th>Código Material</th><th>Quantidade</th><th></th></tr></thead><tbody>';
+      novaSolItens.forEach((item, idx) => {
+        html += `<tr>
+          <td style="padding:8px 10px;"><input type="text" class="search-input" style="max-width:none;" value="${escapeHtml(item.codigo)}" oninput="updateItemSolicitacao(${idx}, 'codigo', this.value)"></td>
+          <td style="padding:8px 10px;"><input type="number" min="0" class="search-input" style="max-width:none;" value="${escapeHtml(String(item.quantidade))}" oninput="updateItemSolicitacao(${idx}, 'quantidade', this.value)"></td>
+          <td class="row-del"><button onclick="removeItemSolicitacao(${idx})" title="Remover">✕</button></td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      wrap.innerHTML = html;
+    }
+
+    // Sugere o lote/posição pelo critério FIFO (mais antigo primeiro) para
+    // cobrir a quantidade solicitada. Usa o Supabase quando configurado;
+    // sem conexão, cai para os dados de Cadastros já carregados em memória.
+    async function sugerirFifo(scope, codigoMaterial, quantidade) {
+      const area = areaLabel(scope);
+      let rows = [];
+
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient
+          .from('saldo_estoque')
+          .select('id, lote, codigo_material, descricao, quantidade, localizacao, data_entrada')
+          .eq('area', area)
+          .eq('codigo_material', codigoMaterial)
+          .order('data_entrada', { ascending: true });
+        if (!error && data) rows = data;
+      }
+
+      if (!rows.length && tabData[scope].saldo) {
+        const local = tabData[scope].saldo;
+        const idxCodigo = local.headers.findIndex(h => normalizeText(h).includes('codigo'));
+        const idxDescricao = local.headers.findIndex(h => normalizeText(h).includes('descricao'));
+        const idxLote = local.headers.findIndex(h => normalizeText(h).includes('lote'));
+        const idxLoc = local.headers.findIndex(h => normalizeText(h).includes('localizacao'));
+        rows = local.rows
+          .filter(r => idxCodigo > -1 && normalizeText(r[idxCodigo]) === normalizeText(codigoMaterial))
+          .map(r => ({
+            id: null,
+            lote: idxLote > -1 ? r[idxLote] : '',
+            descricao: idxDescricao > -1 ? r[idxDescricao] : '',
+            localizacao: idxLoc > -1 ? r[idxLoc] : ''
+          }));
+      }
+
+      if (!rows.length) {
+        return { encontrado: false, lote: null, localizacao: null, saldo_id: null, descricao: '' };
+      }
+
+      const primeiro = rows[0]; // já ordenado do mais antigo pro mais novo — critério FIFO
+      return {
+        encontrado: true,
+        lote: primeiro.lote || '',
+        localizacao: primeiro.localizacao || '',
+        saldo_id: primeiro.id || null,
+        descricao: primeiro.descricao || ''
+      };
+    }
+
+    async function handleCriarSolicitacao() {
+      if (!requireLogin()) return;
+
+      const solicitante = document.getElementById('novaSolSolicitante').value.trim();
+      const destino = document.getElementById('novaSolDestino').value.trim();
+      const prioridade = document.getElementById('novaSolPrioridade').value;
+      const observacao = document.getElementById('novaSolObservacao').value.trim();
+      const msgEl = document.getElementById('novaSolMsg');
+      msgEl.innerHTML = '';
+
+      const itensValidos = novaSolItens.filter(i => i.codigo.trim() !== '' && parseFloat(i.quantidade) > 0);
+      if (!itensValidos.length) {
+        msgEl.innerHTML = '<div class="form-error">Adicione ao menos um item com código e quantidade.</div>';
+        return;
+      }
+
+      const itensComSugestao = [];
+      for (const item of itensValidos) {
+        const sugestao = await sugerirFifo(novaSolScope, item.codigo.trim(), parseFloat(item.quantidade));
+        itensComSugestao.push({
+          codigo_material: item.codigo.trim(),
+          descricao: sugestao.descricao,
+          quantidade_solicitada: parseFloat(item.quantidade),
+          quantidade_separada: 0,
+          lote_sugerido: sugestao.lote,
+          localizacao_sugerida: sugestao.localizacao,
+          saldo_id: sugestao.saldo_id,
+          status: 'Pendente'
+        });
+      }
+
+      const area = areaLabel(novaSolScope);
+
+      if (supabaseClient) {
+        const { data: cab, error: errCab } = await supabaseClient
+          .from('solicitacoes_separacao')
+          .insert({ area, solicitante, destino, prioridade, observacao })
+          .select()
+          .single();
+
+        if (errCab) {
+          msgEl.innerHTML = `<div class="form-error">${escapeHtml(errCab.message)}</div>`;
+          return;
+        }
+
+        const itensParaInserir = itensComSugestao.map(i => ({ ...i, solicitacao_id: cab.id }));
+        const { error: errItens } = await supabaseClient.from('solicitacao_itens').insert(itensParaInserir);
+
+        if (errItens) {
+          msgEl.innerHTML = `<div class="form-error">${escapeHtml(errItens.message)}</div>`;
+          return;
+        }
+
+        await fetchSolicitacoes(novaSolScope);
+      } else {
+        solicitacoesData[novaSolScope].unshift({
+          id: 'local-' + Date.now(),
+          numero: solicitacoesData[novaSolScope].length + 1,
+          solicitante, destino, prioridade, status: 'Aberta', observacao,
+          created_at: new Date().toISOString(),
+          itens: itensComSugestao
+        });
+        renderSeparacaoView(novaSolScope);
+      }
+
+      msgEl.innerHTML = '<div class="form-success">Solicitação criada!</div>';
+      setTimeout(closeNovaSolicitacaoModal, 900);
+    }
+
+    // Busca as solicitações (e seus itens) no Supabase para a área informada
+    async function fetchSolicitacoes(scope) {
+      if (!supabaseClient) return;
+      const area = areaLabel(scope);
+
+      const { data: cabs, error } = await supabaseClient
+        .from('solicitacoes_separacao')
+        .select('*')
+        .eq('area', area)
+        .order('created_at', { ascending: false });
+
+      if (error) { console.error('Erro ao buscar solicitacoes_separacao:', error); return; }
+      if (!cabs) return;
+
+      const lista = [];
+      for (const cab of cabs) {
+        const { data: itens } = await supabaseClient
+          .from('solicitacao_itens')
+          .select('*')
+          .eq('solicitacao_id', cab.id);
+        lista.push({ ...cab, itens: itens || [] });
+      }
+
+      solicitacoesData[scope] = lista;
+      renderSeparacaoView(scope);
+    }
+
+    // ---- Lista + KPIs da tela de Separação ----
+    function renderSeparacaoView(scope) {
+      const lista = solicitacoesData[scope] || [];
+      const abertas = lista.filter(s => s.status === 'Aberta').length;
+      const emSeparacao = lista.filter(s => s.status === 'Em Separação').length;
+      const separadasHoje = lista.filter(s => s.status === 'Separada' && isHoje(s.updated_at || s.created_at)).length;
+      const itensPendentes = lista.reduce((acc, s) => acc + (s.itens || []).filter(i => i.status !== 'Separado').length, 0);
+
+      const kpiGrid = document.getElementById('sepKpiGrid-' + scope);
+      if (kpiGrid) {
+        kpiGrid.innerHTML = `
+          <div class="metric-card">
+            <div class="metric-icon">📋</div>
+            <div class="metric-text">
+              <div class="metric-label">Abertas</div>
+              <div class="metric-value">${abertas}</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">🚧</div>
+            <div class="metric-text">
+              <div class="metric-label">Em Separação</div>
+              <div class="metric-value">${emSeparacao}</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">✅</div>
+            <div class="metric-text">
+              <div class="metric-label">Separadas hoje</div>
+              <div class="metric-value">${separadasHoje}</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">📦</div>
+            <div class="metric-text">
+              <div class="metric-label">Itens pendentes</div>
+              <div class="metric-value">${itensPendentes}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      const countEl = document.getElementById('sepCount-' + scope);
+      if (countEl) countEl.textContent = lista.length + ' solicitação(ões)';
+
+      const wrap = document.getElementById('sepListWrap-' + scope);
+      if (!wrap) return;
+
+      if (!lista.length) {
+        wrap.innerHTML = '<div class="empty-state">Nenhuma solicitação ainda.</div>';
+        return;
+      }
+
+      let html = '<table class="stock-table"><thead><tr><th>Nº</th><th>Data</th><th>Solicitante</th><th>Destino</th><th>Prioridade</th><th>Itens</th><th>Status</th><th></th></tr></thead><tbody>';
+      lista.forEach(s => {
+        const cls = s.status === 'Separada' ? 'ok' : s.status === 'Em Separação' ? 'warn' : s.status === 'Cancelada' ? 'bad' : 'info';
+        html += `<tr>
+          <td>SEP-${String(s.numero).padStart(6, '0')}</td>
+          <td>${new Date(s.created_at).toLocaleDateString('pt-BR')}</td>
+          <td>${escapeHtml(s.solicitante || '')}</td>
+          <td>${escapeHtml(s.destino || '')}</td>
+          <td>${escapeHtml(s.prioridade || '')}</td>
+          <td>${(s.itens || []).length}</td>
+          <td><span class="status-badge ${cls}">${escapeHtml(s.status)}</span></td>
+          <td><button class="small-btn" onclick="openDetalheSolicitacao('${scope}', '${s.id}')">Abrir</button></td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      wrap.innerHTML = html;
+    }
+
+    // ---- Detalhe da Solicitação + fluxo de status ----
+    function openDetalheSolicitacao(scope, id) {
+      detalheSolScope = scope;
+      detalheSolId = id;
+      renderDetalheSolicitacao();
+      document.getElementById('detalheSolicitacaoModal').classList.add('open');
+    }
+
+    function closeDetalheSolicitacao() {
+      document.getElementById('detalheSolicitacaoModal').classList.remove('open');
+    }
+
+    function getSolicitacaoAtual() {
+      return (solicitacoesData[detalheSolScope] || []).find(s => s.id === detalheSolId);
+    }
+
+    function renderDetalheSolicitacao() {
+      const sol = getSolicitacaoAtual();
+      if (!sol) return;
+
+      document.getElementById('detalheSolTitle').textContent = 'SEP-' + String(sol.numero).padStart(6, '0');
+      document.getElementById('detalheSolSubtitle').textContent =
+        (detalheSolScope === 'mp' ? 'Matéria Prima' : 'Produto Acabado') + ' · ' + sol.status + ' · Solicitante: ' + (sol.solicitante || '-');
+
+      let html = '<table class="edit-table"><thead><tr><th>Código</th><th>Descrição</th><th>Qtd. Solicitada</th><th>Lote Sugerido (FIFO)</th><th>Localização</th><th>Status</th></tr></thead><tbody>';
+      (sol.itens || []).forEach(i => {
+        html += `<tr>
+          <td style="padding:8px 10px;">${escapeHtml(i.codigo_material)}</td>
+          <td style="padding:8px 10px;">${escapeHtml(i.descricao || '')}</td>
+          <td style="padding:8px 10px;">${i.quantidade_solicitada}</td>
+          <td style="padding:8px 10px;">${escapeHtml(i.lote_sugerido || '—')}</td>
+          <td style="padding:8px 10px;">${escapeHtml(i.localizacao_sugerida || '—')}</td>
+          <td style="padding:8px 10px;">${i.status === 'Separado' ? '<span class="status-badge ok">Separado</span>' : '<span class="status-badge warn">Pendente</span>'}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      document.getElementById('detalheSolItensWrap').innerHTML = html;
+
+      const acoesEl = document.getElementById('detalheSolAcoes');
+      let acoesHtml = '';
+      if (sol.status === 'Aberta') {
+        acoesHtml += '<button class="action-btn primary" onclick="handleIniciarSeparacao()">Iniciar Separação</button>';
+        acoesHtml += '<button class="action-btn" onclick="handleCancelarSolicitacao()">Cancelar</button>';
+      } else if (sol.status === 'Em Separação') {
+        acoesHtml += '<button class="action-btn primary" onclick="handleConfirmarSeparacao()">Confirmar Separação</button>';
+        acoesHtml += '<button class="action-btn" onclick="handleCancelarSolicitacao()">Cancelar</button>';
+      }
+      acoesEl.innerHTML = acoesHtml;
+      document.getElementById('detalheSolMsg').innerHTML = '';
+    }
+
+    async function handleIniciarSeparacao() {
+      if (!requireLogin()) return;
+      await atualizarStatusSolicitacao('Em Separação');
+    }
+
+    async function handleCancelarSolicitacao() {
+      if (!requireLogin()) return;
+      await atualizarStatusSolicitacao('Cancelada');
+    }
+
+    // Confirma a separação: registra a saída de cada item em Movimentações
+    // e marca os itens como separados.
+    async function handleConfirmarSeparacao() {
+      if (!requireLogin()) return;
+
+      const sol = getSolicitacaoAtual();
+      if (!sol) return;
+
+      const area = areaLabel(detalheSolScope);
+
+      for (const item of (sol.itens || [])) {
+        const responsavel = currentProfile ? (currentProfile.nome || currentProfile.email) : '';
+
+        if (supabaseClient) {
+          await supabaseClient.from('movimentacoes').insert({
+            data: new Date().toISOString(),
+            tipo: 'Saída',
+            codigo_material: item.codigo_material,
+            descricao: item.descricao,
+            quantidade: item.quantidade_solicitada,
+            origem: item.localizacao_sugerida || '',
+            destino: sol.destino || 'Expedição',
+            responsavel,
+            area
+          });
+          await supabaseClient.from('solicitacao_itens').update({
+            quantidade_separada: item.quantidade_solicitada,
+            status: 'Separado'
+          }).eq('id', item.id);
+        } else {
+          movData.unshift([
+            new Date().toLocaleDateString('pt-BR'), 'Saída', item.codigo_material, item.descricao || '',
+            item.quantidade_solicitada + ' un', item.localizacao_sugerida || '', sol.destino || 'Expedição', responsavel
+          ]);
+          item.status = 'Separado';
+          item.quantidade_separada = item.quantidade_solicitada;
+        }
+      }
+
+      if (!supabaseClient) filterMovReport();
+
+      await atualizarStatusSolicitacao('Separada');
+    }
+
+    async function atualizarStatusSolicitacao(novoStatus) {
+      const sol = getSolicitacaoAtual();
+      if (!sol) return;
+
+      if (supabaseClient) {
+        const { error } = await supabaseClient
+          .from('solicitacoes_separacao')
+          .update({ status: novoStatus })
+          .eq('id', sol.id);
+        if (error) {
+          document.getElementById('detalheSolMsg').innerHTML = `<div class="form-error">${escapeHtml(error.message)}</div>`;
+          return;
+        }
+        await fetchSolicitacoes(detalheSolScope);
+      } else {
+        sol.status = novoStatus;
+        renderSeparacaoView(detalheSolScope);
+      }
+
+      renderDetalheSolicitacao();
     }
 
     // Alterna entre as views do menu principal
@@ -2476,10 +3008,14 @@
       renderMovReport(movData);
       renderVeiculoTable();
       renderViagensAgrupadas();
+      renderSeparacaoView('pa');
+      renderSeparacaoView('mp');
 
       if (supabaseClient) {
         fetchMovimentacoes();
         fetchVeiculosEViagens();
+        fetchSolicitacoes('pa');
+        fetchSolicitacoes('mp');
       }
     });
 
