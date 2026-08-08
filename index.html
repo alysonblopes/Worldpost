@@ -1576,12 +1576,27 @@
         <div>
           <div class="breadcrumb">ESTOQUE / APONTAMENTO</div>
           <h1>Apontamento</h1>
-          <p class="subtitle">Aguardando especificação do que este campo deve conter</p>
+          <p class="subtitle">Painel de Programação de Expedição de Material (Power BI)</p>
         </div>
       </div>
-      <div class="placeholder-panel">
-        <h1>Apontamento</h1>
-        <p>Conteúdo a definir — assim que as especificações forem passadas, montamos esta tela.</p>
+
+      <!-- Configuração do link (somente Administrador) -->
+      <div class="panel" id="apontamentoConfigPanel" style="display: none;">
+        <h2 style="margin-bottom: 10px;">Link do relatório (Power BI)</h2>
+        <p style="font-size: 12px; color: #8f98a0; margin-bottom: 12px;">
+          Cole aqui o link de "Publicar na Web" ou de incorporação segura do Power BI. Fica salvo pra todo mundo que acessar essa tela.
+        </p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <input type="text" id="apontamentoBiUrl" class="search-input" style="flex: 1; min-width: 260px; max-width: none;" placeholder="https://app.powerbi.com/view?r=...">
+          <button class="small-btn save" onclick="handleSalvarBiUrl()">Salvar link</button>
+        </div>
+        <div id="apontamentoConfigMsg"></div>
+      </div>
+
+      <div class="panel" style="padding: 0; overflow: hidden;">
+        <div id="apontamentoBiWrap">
+          <div class="empty-state">Carregando…</div>
+        </div>
       </div>
     </div>
 
@@ -2057,6 +2072,80 @@
         return false;
       }
       return true;
+    }
+
+    // =========================================================
+    // APONTAMENTO — Embed do Power BI (Programação de Expedição)
+    // O link fica salvo na tabela "configuracoes" (chave
+    // 'apontamento_bi_url'), editável só por Administradores.
+    // =========================================================
+    async function carregarBiUrl() {
+      const wrap = document.getElementById('apontamentoBiWrap');
+      const configPanel = document.getElementById('apontamentoConfigPanel');
+
+      // Só admin vê o campo de configurar o link
+      if (currentProfile && currentProfile.role === 'admin') {
+        configPanel.style.display = 'block';
+      } else {
+        configPanel.style.display = 'none';
+      }
+
+      if (!supabaseClient) {
+        wrap.innerHTML = '<div class="empty-state">Supabase não configurado.</div>';
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from('configuracoes')
+        .select('valor')
+        .eq('chave', 'apontamento_bi_url')
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erro ao buscar link do Power BI:', error);
+        wrap.innerHTML = '<div class="empty-state">Não foi possível carregar a configuração.</div>';
+        return;
+      }
+
+      const url = data ? data.valor : null;
+      document.getElementById('apontamentoBiUrl').value = url || '';
+      renderApontamentoBi(url);
+    }
+
+    function renderApontamentoBi(url) {
+      const wrap = document.getElementById('apontamentoBiWrap');
+      if (!url) {
+        wrap.innerHTML = '<div class="empty-state">Nenhum relatório configurado ainda.' +
+          (currentProfile && currentProfile.role === 'admin' ? ' Cole o link acima e clique em "Salvar link".' : ' Peça a um administrador para configurar.') +
+          '</div>';
+        return;
+      }
+      wrap.innerHTML = `<iframe src="${escapeHtml(url)}" style="width: 100%; height: 720px; border: none; display: block;" allowFullScreen></iframe>`;
+    }
+
+    async function handleSalvarBiUrl() {
+      if (!requireAdmin()) return;
+
+      const url = document.getElementById('apontamentoBiUrl').value.trim();
+      const msgEl = document.getElementById('apontamentoConfigMsg');
+      msgEl.innerHTML = '';
+
+      if (!url) {
+        msgEl.innerHTML = '<div class="form-error">Cole o link do relatório antes de salvar.</div>';
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from('configuracoes')
+        .upsert({ chave: 'apontamento_bi_url', valor: url });
+
+      if (error) {
+        msgEl.innerHTML = `<div class="form-error">${escapeHtml(error.message)}</div>`;
+        return;
+      }
+
+      msgEl.innerHTML = '<div class="form-success">Link salvo!</div>';
+      renderApontamentoBi(url);
     }
 
     // Placeholder — a lógica de Solicitar Verificação de Material ainda será definida
@@ -2745,6 +2834,10 @@
       });
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      if (viewId === 'apontamento') {
+        carregarBiUrl();
+      }
     }
 
     // Armazena os dados cadastrados, separados por área:
