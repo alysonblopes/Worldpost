@@ -1764,32 +1764,20 @@
       <div class="modal-body">
 
         <div class="panel" style="margin-bottom: 18px;">
-          <h2 style="margin-bottom: 12px;">Novo usuário</h2>
-          <div class="form-group">
-            <label>Nome</label>
-            <input type="text" id="novoUsuarioNome" placeholder="Nome completo">
-          </div>
-          <div class="form-group">
-            <label>E-mail</label>
-            <input type="email" id="novoUsuarioEmail" placeholder="pessoa@empresa.com">
-          </div>
-          <div class="form-group">
-            <label>Senha temporária</label>
-            <input type="password" id="novoUsuarioSenha" placeholder="Mínimo 6 caracteres">
-          </div>
-          <div class="form-group">
-            <label>Permissão</label>
-            <select id="novoUsuarioRole">
-              <option value="usuario">Usuário</option>
-              <option value="admin">Administrador</option>
-            </select>
-          </div>
-          <button class="small-btn save" onclick="handleCriarUsuario()">Criar usuário</button>
-          <div id="novoUsuarioMsg"></div>
+          <h2 style="margin-bottom: 8px;">Como adicionar uma pessoa</h2>
+          <p style="font-size: 12px; color: #8f98a0; line-height: 1.6;">
+            Crie a conta direto no painel do Supabase, sem precisar de código:
+            <strong>Authentication → Users → Add User</strong>, preenchendo e-mail e uma senha temporária.
+            O sistema cria o perfil dela automaticamente aqui embaixo, já como "Usuário" e aguardando a troca de senha no primeiro acesso.
+            Se ela precisar ser Administradora, use o seletor de permissão na lista abaixo.
+          </p>
         </div>
 
         <div class="table-actions">
           <span class="file-name">Usuários cadastrados</span>
+          <div class="btn-group">
+            <button class="small-btn" onclick="renderUsuariosList()">Atualizar lista</button>
+          </div>
         </div>
         <div class="table-wrap" id="usuariosListWrap">
           <div class="empty-state">Carregando usuários…</div>
@@ -1906,11 +1894,11 @@
     // com os valores padrão abaixo, a aplicação continua funcionando
     // normalmente com dados locais/mock, apenas sem persistência real.
     // =========================================================
-    const SUPABASE_URL = 'SUA_SUPABASE_URL_AQUI';
-    const SUPABASE_ANON_KEY = 'SUA_SUPABASE_ANON_KEY_AQUI';
+    const SUPABASE_URL = 'https://hrfzbaujyuzzvbrgzysk.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZnpiYXVqeXV6enZicmd6eXNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNjQ5NzYsImV4cCI6MjEwMTc0MDk3Nn0.Nf0mKdgTBzjiGJZ8D-41aQlj3Gz5A3jt6vL_iAC2J0A';
 
     let supabaseClient = null;
-    const dbConfigured = SUPABASE_URL !== 'SUA_SUPABASE_URL_AQUI' && SUPABASE_ANON_KEY !== 'SUA_SUPABASE_ANON_KEY_AQUI';
+    const dbConfigured = SUPABASE_URL !== 'https://hrfzbaujyuzzvbrgzysk.supabase.co' && SUPABASE_ANON_KEY !== 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZnpiYXVqeXV6enZicmd6eXNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNjQ5NzYsImV4cCI6MjEwMTc0MDk3Nn0.Nf0mKdgTBzjiGJZ8D-41aQlj3Gz5A3jt6vL_iAC2J0A';
 
     if (dbConfigured && window.supabase) {
       try {
@@ -2157,7 +2145,7 @@
       const wrap = document.getElementById('usuariosListWrap');
       const { data, error } = await supabaseClient
         .from('usuarios')
-        .select('nome, email, role, must_change_password, created_at')
+        .select('id, nome, email, role, must_change_password, created_at')
         .order('created_at');
 
       if (error) {
@@ -2170,52 +2158,46 @@
         return;
       }
 
-      let html = '<table class="edit-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Permissão</th><th>Status</th></tr></thead><tbody>';
+      let html = '<table class="edit-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Permissão</th><th>Status</th><th></th></tr></thead><tbody>';
       data.forEach(u => {
+        const isSelf = currentSession && u.id === currentSession.user.id;
         html += '<tr>';
         html += `<td style="padding:8px 10px;">${escapeHtml(u.nome || '')}</td>`;
         html += `<td style="padding:8px 10px;">${escapeHtml(u.email || '')}</td>`;
-        html += `<td style="padding:8px 10px;"><span class="badge-role ${u.role}">${u.role === 'admin' ? 'Administrador' : 'Usuário'}</span></td>`;
+        html += `<td style="padding:8px 10px;">
+          <select class="search-input" style="max-width: 160px;" data-user-id="${u.id}" onchange="handleAlterarRole(this)" ${isSelf ? 'disabled title="Você não pode alterar sua própria permissão"' : ''}>
+            <option value="usuario" ${u.role === 'usuario' ? 'selected' : ''}>Usuário</option>
+            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrador</option>
+          </select>
+        </td>`;
         html += `<td style="padding:8px 10px;">${u.must_change_password ? '<span class="status-badge warn">Aguardando 1º acesso</span>' : '<span class="status-badge ok">Ativo</span>'}</td>`;
+        html += `<td style="padding:8px 10px;" id="roleMsg-${u.id}"></td>`;
         html += '</tr>';
       });
       html += '</tbody></table>';
       wrap.innerHTML = html;
     }
 
-    async function handleCriarUsuario() {
-      const nome = document.getElementById('novoUsuarioNome').value.trim();
-      const email = document.getElementById('novoUsuarioEmail').value.trim();
-      const senha = document.getElementById('novoUsuarioSenha').value;
-      const role = document.getElementById('novoUsuarioRole').value;
-      const msgEl = document.getElementById('novoUsuarioMsg');
-      msgEl.innerHTML = '';
+    // Promove/rebaixa um usuário diretamente na tabela "usuarios"
+    // (o admin logado tem permissão via RLS — nenhuma Edge Function é necessária)
+    async function handleAlterarRole(selectEl) {
+      const userId = selectEl.dataset.userId;
+      const novoRole = selectEl.value;
+      const msgEl = document.getElementById('roleMsg-' + userId);
 
-      if (!nome || !email || !senha) {
-        msgEl.innerHTML = '<div class="form-error">Preencha todos os campos.</div>';
-        return;
-      }
-      if (senha.length < 6) {
-        msgEl.innerHTML = '<div class="form-error">A senha precisa ter pelo menos 6 caracteres.</div>';
-        return;
-      }
+      const { error } = await supabaseClient
+        .from('usuarios')
+        .update({ role: novoRole })
+        .eq('id', userId);
 
-      // Chama a Edge Function admin-create-user (usa a Service Role Key
-      // no servidor — nunca no navegador). Veja admin-create-user.ts.
-      const { data, error } = await supabaseClient.functions.invoke('admin-create-user', {
-        body: { nome, email, senha, role }
-      });
-
-      if (error || (data && data.error)) {
-        msgEl.innerHTML = `<div class="form-error">${escapeHtml((data && data.error) || error.message)}</div>`;
+      if (error) {
+        msgEl.innerHTML = '<span style="color:#e0533d; font-size:11px;">Erro ao salvar</span>';
+        console.error(error);
         return;
       }
 
-      msgEl.innerHTML = '<div class="form-success">Usuário criado! Ele deverá trocar a senha no primeiro acesso.</div>';
-      document.getElementById('novoUsuarioNome').value = '';
-      document.getElementById('novoUsuarioEmail').value = '';
-      document.getElementById('novoUsuarioSenha').value = '';
-      renderUsuariosList();
+      msgEl.innerHTML = '<span style="color:#6bc55a; font-size:11px;">Salvo ✓</span>';
+      setTimeout(() => { msgEl.innerHTML = ''; }, 2000);
     }
 
     // Alterna entre as views do menu principal
